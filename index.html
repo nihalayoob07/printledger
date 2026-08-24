@@ -994,6 +994,9 @@
       <button class="icon-btn" id="logBtn" aria-label="Sold prints log">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v16a1 1 0 0 1-1.45.9L12 19l-3.55 1.9A1 1 0 0 1 7 20V4a2 2 0 0 1 2-2z"></path><line x1="9" y1="8" x2="15" y2="8"></line><line x1="9" y1="12" x2="15" y2="12"></line></svg>
       </button>
+      <button class="icon-btn" id="couponsBtn" aria-label="Manage coupons">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83Z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg>
+      </button>
     </div>
   </div>
 
@@ -1135,10 +1138,20 @@
       <button class="save-btn" id="connectSyncBtn">Connect</button>
       <button class="pill-btn" id="disconnectSyncBtn" style="width:100%; margin-top:10px; display:none; color: var(--danger);">Disconnect sync</button>
     </div>
+  </div>
+</div>
 
-    <button class="secret-trigger" id="secretTrigger" aria-label="More">···</button>
-    <div class="coupon-manager" id="couponManager">
-      <div class="settings-note">Manage discount codes. Applied at checkout by typing the code in the pricer's coupon field.</div>
+<!-- Coupons Sheet -->
+<div class="overlay" id="couponOverlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <span class="sheet-title">Coupons</span>
+      <button class="sheet-close" id="closeCoupons" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="coupon-manager open" id="couponManager">
+      <div class="settings-note">Manage discount codes. Applied at checkout by typing the code in the pricer's coupon field. Tap a coupon to edit it.</div>
       <div class="coupon-list" id="couponList"></div>
       <div class="field-row" style="margin-top:14px;">
         <div class="field">
@@ -1154,6 +1167,7 @@
         </div>
       </div>
       <button class="save-btn" id="addCouponBtn">Add coupon</button>
+      <button class="pill-btn" id="cancelCouponEditBtn" style="width:100%; margin-top:10px; display:none;">Cancel edit</button>
     </div>
   </div>
 </div>
@@ -1549,6 +1563,7 @@
   const clearOverrideBtn = document.getElementById("clearOverrideBtn");
 
   const settingsBtn = document.getElementById("settingsBtn");
+  const couponsBtn = document.getElementById("couponsBtn");
   const settingsOverlay = document.getElementById("settingsOverlay");
   const closeSettings = document.getElementById("closeSettings");
   const saveSettingsBtn = document.getElementById("saveSettingsBtn");
@@ -1568,12 +1583,14 @@
   const connectSyncBtn = document.getElementById("connectSyncBtn");
   const disconnectSyncBtn = document.getElementById("disconnectSyncBtn");
 
-  const secretTrigger = document.getElementById("secretTrigger");
+  const couponOverlay = document.getElementById("couponOverlay");
+  const closeCoupons = document.getElementById("closeCoupons");
   const couponManager = document.getElementById("couponManager");
   const couponList = document.getElementById("couponList");
   const newCouponCode = document.getElementById("newCouponCode");
   const newCouponPercent = document.getElementById("newCouponPercent");
   const addCouponBtn = document.getElementById("addCouponBtn");
+  const cancelCouponEditBtn = document.getElementById("cancelCouponEditBtn");
 
   const logBtn = document.getElementById("logBtn");
   const logOverlay = document.getElementById("logOverlay");
@@ -1810,6 +1827,16 @@
     if(e.target === settingsOverlay) settingsOverlay.classList.remove("open");
   });
 
+  couponsBtn.addEventListener("click", ()=>{
+    resetCouponForm();
+    renderCouponList();
+    couponOverlay.classList.add("open");
+  });
+  closeCoupons.addEventListener("click", ()=> couponOverlay.classList.remove("open"));
+  couponOverlay.addEventListener("click", (e)=>{
+    if(e.target === couponOverlay) couponOverlay.classList.remove("open");
+  });
+
   saveSettingsBtn.addEventListener("click", ()=>{
     settings = {
       filamentCostPerKg: parseFloat(rateFilament.value) || 0,
@@ -1826,10 +1853,6 @@
   });
 
   // ---------- Coupon manager ----------
-  secretTrigger.addEventListener("click", ()=>{
-    couponManager.classList.toggle("open");
-    if(couponManager.classList.contains("open")) renderCouponList();
-  });
 
   function renderCouponList(){
     if(coupons.length === 0){
@@ -1838,22 +1861,55 @@
     }
     couponList.innerHTML = coupons.map((c,i)=> `
       <div class="coupon-row" data-idx="${i}">
-        <span><span class="ccode">${escapeHtml(c.code.toUpperCase())}</span><span class="cpct">${c.percent}% off</span></span>
+        <span class="coupon-row-main" data-idx="${i}"><span class="ccode">${escapeHtml(c.code.toUpperCase())}</span><span class="cpct">${c.percent}% off</span></span>
         <button class="coupon-row-del" aria-label="Delete coupon" data-idx="${i}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
         </button>
       </div>`).join("");
 
+    couponList.querySelectorAll(".coupon-row-main").forEach(el=>{
+      el.style.cursor = "pointer";
+      el.addEventListener("click", ()=>{
+        const idx = parseInt(el.getAttribute("data-idx"), 10);
+        startCouponEdit(idx);
+      });
+    });
+
     couponList.querySelectorAll(".coupon-row-del").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
         const idx = parseInt(btn.getAttribute("data-idx"), 10);
         coupons.splice(idx, 1);
         saveCoupons(coupons);
+        if(editingCouponIdx === idx) resetCouponForm();
         renderCouponList();
         renderPrice();
       });
     });
   }
+
+  let editingCouponIdx = null;
+
+  function startCouponEdit(idx){
+    const c = coupons[idx];
+    if(!c) return;
+    editingCouponIdx = idx;
+    newCouponCode.value = c.code.toUpperCase();
+    newCouponPercent.value = c.percent;
+    addCouponBtn.textContent = "Update coupon";
+    cancelCouponEditBtn.style.display = "block";
+    newCouponCode.focus();
+  }
+
+  function resetCouponForm(){
+    editingCouponIdx = null;
+    newCouponCode.value = "";
+    newCouponPercent.value = "";
+    addCouponBtn.textContent = "Add coupon";
+    cancelCouponEditBtn.style.display = "none";
+  }
+
+  cancelCouponEditBtn.addEventListener("click", resetCouponForm);
 
   addCouponBtn.addEventListener("click", ()=>{
     const code = newCouponCode.value.trim();
@@ -1862,15 +1918,20 @@
       showToast("Enter a code and a discount %");
       return;
     }
-    const existingIdx = coupons.findIndex(c=> c.code.toUpperCase() === code.toUpperCase());
-    if(existingIdx !== -1){
-      coupons[existingIdx] = { code: code.toUpperCase(), percent: pct };
+    const dupIdx = coupons.findIndex(c=> c.code.toUpperCase() === code.toUpperCase());
+    if(editingCouponIdx !== null){
+      if(dupIdx !== -1 && dupIdx !== editingCouponIdx){
+        showToast("Another coupon already uses that code");
+        return;
+      }
+      coupons[editingCouponIdx] = { code: code.toUpperCase(), percent: pct };
+    }else if(dupIdx !== -1){
+      coupons[dupIdx] = { code: code.toUpperCase(), percent: pct };
     }else{
       coupons.push({ code: code.toUpperCase(), percent: pct });
     }
     saveCoupons(coupons);
-    newCouponCode.value = "";
-    newCouponPercent.value = "";
+    resetCouponForm();
     renderCouponList();
     showToast("Coupon saved");
     renderPrice();
