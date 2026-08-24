@@ -1,0 +1,2570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0A0A0B">
+<title>Print Ledger — Pricer</title>
+<meta name="description" content="Price your 3D prints. Track what you've sold.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg: #0A0A0B;
+    --panel: #141416;
+    --panel-raised: #1D1D20;
+    --panel-line: #2A2A2E;
+    --white: #F5F5F2;
+    --white-dim: #C9C9C4;
+    --muted: #6E6E73;
+    --muted-dim: #4A4A4E;
+    --danger: #E85A4C;
+    --success: #7FB88A;
+
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --sans: 'Inter', system-ui, sans-serif;
+
+    --seg-filament: #F5F5F2;
+    --seg-power: #A8A8A2;
+    --seg-labour: #7A7A76;
+    --seg-profit: #4E4E4A;
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body{
+    background: var(--bg);
+    color: var(--white);
+    font-family: var(--sans);
+    height: 100%;
+    overscroll-behavior-y: none;
+  }
+
+  body{
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  ::selection{ background: var(--white); color: var(--bg); }
+
+  button{ font-family: inherit; cursor: pointer; }
+  input{ font-family: inherit; }
+
+  :focus-visible{
+    outline: 2px solid var(--white);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* ---------- Shell ---------- */
+  .app{
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 20px 20px 100px;
+    min-height: 100vh;
+  }
+
+  .topbar{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+  }
+
+  .brand{
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .brand .eyebrow{
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .brand .name{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+    color: var(--white);
+  }
+
+  .icon-row{ display:flex; gap: 8px; }
+  .icon-btn{
+    width: 40px; height: 40px;
+    display: flex; align-items:center; justify-content:center;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    color: var(--white-dim);
+    transition: border-color .15s ease, color .15s ease, background .15s ease;
+    position: relative;
+  }
+  .icon-btn:hover{ border-color: var(--muted); color: var(--white); }
+  .icon-btn svg{ width: 18px; height: 18px; }
+  .icon-btn.active{ background: var(--white); color: var(--bg); border-color: var(--white); }
+
+  .icon-badge-dot{
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--success);
+    border: 2px solid var(--bg);
+  }
+  .icon-badge-dot.syncing{
+    background: #E0B84C;
+    animation: pulseDot 1s ease-in-out infinite;
+  }
+  .icon-badge-dot.error{ background: var(--danger); }
+
+  /* ---------- Price readout (signature element) ---------- */
+  .readout{
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 20px;
+    padding: 28px 24px 22px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .readout::before{
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--panel-line) 20%, var(--panel-line) 80%, transparent);
+  }
+
+  .readout-label{
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .readout-label .part-name{
+    color: var(--white-dim);
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 12px;
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .price-value{
+    font-family: var(--mono);
+    font-weight: 800;
+    font-size: clamp(40px, 12vw, 56px);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--white);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .price-value .currency{
+    font-size: 0.42em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .price-value.overridden{ color: var(--success); }
+  .price-value.overridden .currency{ color: var(--success); opacity: 0.7; }
+
+  .price-override-row{
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+  }
+  .price-override-row input{
+    flex: 1;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: var(--white);
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+  .price-override-row input:focus{ border-color: var(--white-dim); outline: none; }
+  .price-override-row .pill-btn{
+    flex-shrink: 0;
+    width: auto;
+    padding: 10px 14px;
+    font-size: 10px;
+  }
+
+  /* ---------- Form ---------- */
+  .form-panel{
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 20px;
+    padding: 22px;
+  }
+
+  .field{
+    margin-bottom: 18px;
+  }
+  .field:last-child{ margin-bottom: 0; }
+
+  .field label{
+    display: block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .field input{
+    width: 100%;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    padding: 14px 14px;
+    color: var(--white);
+    font-size: 16px;
+    font-family: var(--sans);
+    transition: border-color .15s ease;
+  }
+  .field input::placeholder{ color: var(--muted-dim); }
+  .field input:focus{ border-color: var(--white-dim); outline: none; }
+
+  .field.numeric input{
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .field-row{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .unit-wrap{ position: relative; }
+  .unit-wrap input{ padding-right: 48px; }
+  .unit-tag{
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  .save-btn{
+    width: 100%;
+    margin-top: 22px;
+    background: var(--white);
+    color: var(--bg);
+    border: none;
+    border-radius: 12px;
+    padding: 15px;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition: opacity .15s ease, transform .1s ease;
+  }
+  .save-btn:hover{ opacity: 0.88; }
+  .save-btn:active{ transform: scale(0.98); }
+  .save-btn:disabled{
+    background: var(--panel-raised);
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+
+  .save-hint{
+    text-align: center;
+    font-size: 12px;
+    color: var(--success);
+    margin-top: 10px;
+    font-family: var(--mono);
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  .save-hint.show{ opacity: 1; }
+
+  .coupon-status{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    margin-top: 8px;
+    min-height: 14px;
+    color: var(--muted);
+  }
+  .coupon-status.applied{ color: var(--success); }
+  .coupon-status.invalid{ color: var(--danger); }
+
+  .toggle-row{
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 18px;
+    padding: 4px 0;
+  }
+  .toggle-item{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .toggle-label{
+    font-size: 13.5px;
+    color: var(--white-dim);
+  }
+  .switch{
+    width: 44px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    position: relative;
+    padding: 0;
+    flex-shrink: 0;
+    transition: background .15s ease, border-color .15s ease;
+  }
+  .switch-knob{
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform .18s cubic-bezier(.4,0,.2,1), background .15s ease;
+  }
+  .switch[aria-checked="true"]{
+    background: var(--white);
+    border-color: var(--white);
+  }
+  .switch[aria-checked="true"] .switch-knob{
+    background: var(--bg);
+    transform: translateX(18px);
+  }
+  .switch.on-danger[aria-checked="true"]{
+    background: var(--danger);
+    border-color: var(--danger);
+  }
+  .switch.on-danger[aria-checked="true"] .switch-knob{
+    background: var(--white);
+  }
+  .switch.on-success[aria-checked="true"]{
+    background: var(--success);
+    border-color: var(--success);
+  }
+  .switch.on-success[aria-checked="true"] .switch-knob{
+    background: var(--bg);
+  }
+
+  /* ---------- Modal / Sheet ---------- */
+  .overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 50;
+  }
+  .overlay.open{ display: flex; }
+
+  @media (min-width: 640px){
+    .overlay{ align-items: center; }
+  }
+
+  .sheet{
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-width: 560px;
+    max-height: 88vh;
+    overflow-y: auto;
+    padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
+    animation: slideUp .25s cubic-bezier(.32,.72,0,1);
+  }
+
+  @media (min-width: 640px){
+    .sheet{ border-radius: 20px; max-height: 80vh; }
+  }
+
+  /* Bill sheet: header fixed, item list scrolls, generate bar pinned to bottom */
+  .sheet.bill-sheet{
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  .sheet.bill-sheet .sheet-header{
+    flex-shrink: 0;
+  }
+  .bill-scroll-area{
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 16px;
+  }
+  .bill-sticky-footer{
+    flex-shrink: 0;
+    background: var(--panel);
+    border-top: 1px solid var(--panel-line);
+    padding: 12px 0 calc(16px + env(safe-area-inset-bottom));
+  }
+
+  @keyframes slideUp{
+    from{ transform: translateY(24px); opacity: 0; }
+    to{ transform: translateY(0); opacity: 1; }
+  }
+
+  .sheet-header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .sheet-title{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+  .sheet-close{
+    width: 32px; height: 32px;
+    display: flex; align-items:center; justify-content:center;
+    color: var(--muted);
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+  }
+  .sheet-close:hover{ color: var(--white); background: var(--panel-raised); }
+  .sheet-close svg{ width: 16px; height: 16px; }
+
+  .settings-note{
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+
+  .secret-trigger{
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: transparent;
+    border: none;
+    color: var(--muted-dim);
+    font-family: var(--mono);
+    font-size: 16px;
+    letter-spacing: 0.2em;
+    padding: 16px 0 4px;
+  }
+  .secret-trigger:hover{ color: var(--muted); }
+
+  .coupon-manager{
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .25s ease;
+  }
+  .coupon-manager.open{
+    max-height: 600px;
+    margin-top: 8px;
+  }
+
+  .coupon-list{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .coupon-row{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .coupon-row .ccode{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--white);
+  }
+  .coupon-row .cpct{
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 8px;
+  }
+  .coupon-row-del{
+    width: 26px; height: 26px;
+    display: flex; align-items:center; justify-content:center;
+    color: var(--muted);
+    border-radius: 7px;
+    background: transparent;
+    border: none;
+  }
+  .coupon-row-del:hover{ color: var(--danger); background: rgba(232,90,76,0.1); }
+  .coupon-row-del svg{ width: 13px; height: 13px; }
+
+  .sync-section{
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--panel-line);
+  }
+  .sync-section-header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .sync-section-title{
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .sync-status-dot{
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--muted-dim);
+    flex-shrink: 0;
+    transition: background .2s ease;
+  }
+  .sync-status-dot.connected{ background: var(--success); }
+  .sync-status-dot.syncing{ background: #E0B84C; animation: pulseDot 1s ease-in-out infinite; }
+  .sync-status-dot.error{ background: var(--danger); }
+  @keyframes pulseDot{
+    0%, 100%{ opacity: 1; }
+    50%{ opacity: 0.4; }
+  }
+
+  /* ---------- Log / Spreadsheet sheet ---------- */
+  .log-toolbar{
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .pill-btn{
+    flex: 1;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    color: var(--white-dim);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .pill-btn:hover{ border-color: var(--muted); color: var(--white); }
+  .pill-btn svg{ width: 14px; height: 14px; }
+
+  .search-wrap{
+    position: relative;
+    margin-bottom: 12px;
+  }
+  .search-icon{
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px; height: 16px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .search-wrap input{
+    width: 100%;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    padding: 12px 14px 12px 40px;
+    color: var(--white);
+    font-size: 14px;
+    font-family: var(--sans);
+  }
+  .search-wrap input::placeholder{ color: var(--muted-dim); }
+  .search-wrap input:focus{ border-color: var(--white-dim); outline: none; }
+
+  .filter-row{
+    display: flex;
+    gap: 6px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .filter-row::-webkit-scrollbar{ display: none; }
+  .filter-chip{
+    flex-shrink: 0;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: all .15s ease;
+  }
+  .filter-chip:hover{ color: var(--white-dim); }
+  .filter-chip.active{
+    background: var(--white);
+    color: var(--bg);
+    border-color: var(--white);
+  }
+
+  .stats-strip{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .stat-box{
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .stat-box .stat-label{
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .stat-box .stat-value{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--white);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-box .stat-value.negative{
+    color: var(--danger);
+  }
+
+  .log-list{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .log-empty{
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+  .log-empty .glyph{
+    font-family: var(--mono);
+    font-size: 32px;
+    color: var(--muted-dim);
+    margin-bottom: 10px;
+  }
+  .log-empty .msg{
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .log-card{
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    border-left: 3px solid var(--panel-line);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color .15s ease;
+  }
+  .log-card.sold{ border-left-color: var(--success); }
+  .log-card.freebie{ border-left-color: var(--danger); }
+
+  .log-row{
+    padding: 13px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    color: inherit;
+  }
+  .log-row:hover{ background: rgba(255,255,255,0.02); }
+  .log-row-main{ min-width: 0; flex: 1; }
+  .log-row-product{
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .log-row-meta{
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .log-row-right{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .log-row-price{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--white);
+    font-variant-numeric: tabular-nums;
+  }
+  .log-row-del{
+    width: 26px; height: 26px;
+    display: flex; align-items:center; justify-content:center;
+    color: var(--muted);
+    border-radius: 7px;
+    background: transparent;
+    border: none;
+  }
+  .log-row-del:hover{ color: var(--danger); background: rgba(232,90,76,0.1); }
+  .log-row-del svg{ width: 14px; height: 14px; }
+
+  .log-detail{
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .25s ease;
+  }
+  .log-card.expanded .log-detail{
+    max-height: 700px;
+  }
+  .log-detail-inner{
+    padding: 0 14px 16px;
+    border-top: 1px solid var(--panel-line);
+    margin-top: 2px;
+    padding-top: 14px;
+  }
+  .log-detail-header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .log-detail-label{
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .log-detail-close{
+    width: 24px; height: 24px;
+    display: flex; align-items:center; justify-content:center;
+    color: var(--muted);
+    border-radius: 6px;
+    background: transparent;
+    border: none;
+  }
+  .log-detail-close:hover{ color: var(--white); background: var(--panel); }
+  .log-detail-close svg{ width: 14px; height: 14px; }
+
+  .price-edit-tile{
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
+    grid-column: span 2;
+  }
+  .price-display-mode{
+    color: var(--white) !important;
+  }
+  .price-edit-mode{
+    position: relative;
+    margin-top: 2px;
+  }
+  .edit-price-currency{
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .edit-price-input{
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--white-dim);
+    border-radius: 8px;
+    padding: 6px 10px 6px 24px;
+    color: var(--white);
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 13.5px;
+  }
+  .edit-price-input:focus{ border-color: var(--white); outline: none; }
+
+  .log-detail-grid{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .log-detail-item{
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .log-detail-item .dlabel{
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .log-detail-item .dvalue{
+    font-family: var(--mono);
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--white);
+    font-variant-numeric: tabular-nums;
+  }
+  .log-detail-item .dvalue.negative{ color: var(--danger); }
+  .log-detail-item .dvalue.positive{ color: var(--success); }
+
+  /* ---------- Bill generator ---------- */
+  .bill-item-row{
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color .15s ease;
+  }
+  .bill-item-row.checked{
+    border-color: var(--white-dim);
+  }
+  .bill-checkbox{
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid var(--muted);
+    background: transparent;
+    flex-shrink: 0;
+    display: flex; align-items:center; justify-content:center;
+    color: transparent;
+    transition: all .15s ease;
+  }
+  .bill-checkbox svg{ width: 13px; height: 13px; }
+  .bill-item-row.checked .bill-checkbox{
+    background: var(--white);
+    border-color: var(--white);
+    color: var(--bg);
+  }
+  .bill-item-main{ flex: 1; min-width: 0; }
+  .bill-item-product{
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bill-item-meta{
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .bill-item-price{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 13.5px;
+    color: var(--white);
+    flex-shrink: 0;
+  }
+
+  .bill-footer-bar{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 4px;
+    margin-top: 8px;
+    border-top: 1px solid var(--panel-line);
+  }
+  .bill-footer-count{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .bill-footer-total{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--white);
+  }
+
+  input[type="file"]{ display: none; }
+
+  .toast{
+    position: fixed;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--white);
+    color: var(--bg);
+    padding: 12px 20px;
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    font-weight: 600;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+    white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .toast.show{
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="eyebrow">The Print Vault</span>
+      <span class="name">Print Ledger</span>
+    </div>
+    <div class="icon-row">
+      <button class="icon-btn" id="settingsBtn" aria-label="Pricing settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span class="icon-badge-dot" id="topbarSyncDot" style="display:none;"></span>
+      </button>
+      <button class="icon-btn" id="billBtn" aria-label="Create bill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16v18l-3-2-2 2-2-2-2 2-2-2-2 2-3-2z"></path><line x1="8" y1="8" x2="16" y2="8"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="16" x2="12" y2="16"></line></svg>
+      </button>
+      <button class="icon-btn" id="logBtn" aria-label="Sold prints log">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v16a1 1 0 0 1-1.45.9L12 19l-3.55 1.9A1 1 0 0 1 7 20V4a2 2 0 0 1 2-2z"></path><line x1="9" y1="8" x2="15" y2="8"></line><line x1="9" y1="12" x2="15" y2="12"></line></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Price readout -->
+  <div class="readout">
+    <div class="readout-label">
+      <span>Quoted Price</span>
+      <span class="part-name" id="partNameEcho">—</span>
+    </div>
+    <div class="price-value" id="priceValueWrap"><span class="currency">₹</span><span id="priceDisplay">0</span></div>
+    <div class="price-override-row" id="priceOverrideRow" style="display:none;">
+      <input type="number" id="priceOverrideInput" inputmode="decimal" min="0" step="1" placeholder="Custom price">
+      <button class="pill-btn" id="clearOverrideBtn">Use calculated price</button>
+    </div>
+  </div>
+
+  <!-- Input form -->
+  <div class="form-panel">
+    <div class="field">
+      <label for="productName">Product name</label>
+      <input type="text" id="productName" placeholder="e.g. Articulated dragon">
+    </div>
+    <div class="field">
+      <label for="customerName">Customer name</label>
+      <input type="text" id="customerName" placeholder="e.g. Rakesh">
+    </div>
+    <div class="field-row">
+      <div class="field numeric">
+        <label for="filamentWeight">Filament weight</label>
+        <div class="unit-wrap">
+          <input type="number" id="filamentWeight" placeholder="0" inputmode="decimal" min="0" step="0.1">
+          <span class="unit-tag">g</span>
+        </div>
+      </div>
+      <div class="field numeric">
+        <label for="printTime">Print time</label>
+        <div class="unit-wrap">
+          <input type="number" id="printTime" placeholder="0" inputmode="decimal" min="0" step="0.1">
+          <span class="unit-tag">hrs</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="couponInput">Coupon code (optional)</label>
+      <input type="text" id="couponInput" placeholder="e.g. FAMILY" autocapitalize="characters">
+      <div class="coupon-status" id="couponStatus"></div>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-item">
+        <span class="toggle-label">Packaging charge</span>
+        <button class="switch" id="packagingToggle" role="switch" aria-checked="false"><span class="switch-knob"></span></button>
+      </div>
+      <div class="toggle-item">
+        <span class="toggle-label">This is a freebie</span>
+        <button class="switch" id="freebieToggle" role="switch" aria-checked="false"><span class="switch-knob"></span></button>
+      </div>
+    </div>
+
+    <button class="save-btn" id="saveBtn" disabled>Log this sale</button>
+    <div class="save-hint" id="saveHint">Saved to your ledger</div>
+  </div>
+
+</div>
+
+<!-- Settings Sheet -->
+<div class="overlay" id="settingsOverlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <span class="sheet-title">Pricing settings</span>
+      <button class="sheet-close" id="closeSettings" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="settings-note">These rates apply to every quote. Power rate defaults to a high-end Mangalore commercial tariff — adjust to match your actual bill.</div>
+
+    <div class="field numeric">
+      <label for="rateFilament">Filament cost</label>
+      <div class="unit-wrap">
+        <input type="number" id="rateFilament" inputmode="decimal" min="0" step="10">
+        <span class="unit-tag">₹/kg</span>
+      </div>
+    </div>
+
+    <div class="field numeric">
+      <label for="ratePower">Printer power draw</label>
+      <div class="unit-wrap">
+        <input type="number" id="ratePower" inputmode="decimal" min="0" step="1">
+        <span class="unit-tag">W</span>
+      </div>
+    </div>
+
+    <div class="field numeric">
+      <label for="rateElectricity">Electricity rate</label>
+      <div class="unit-wrap">
+        <input type="number" id="rateElectricity" inputmode="decimal" min="0" step="0.1">
+        <span class="unit-tag">₹/kWh</span>
+      </div>
+    </div>
+
+    <div class="field numeric">
+      <label for="rateLabour">Labour cost</label>
+      <div class="unit-wrap">
+        <input type="number" id="rateLabour" inputmode="decimal" min="0" step="1">
+        <span class="unit-tag">₹/hr</span>
+      </div>
+    </div>
+
+    <div class="field numeric">
+      <label for="ratePackaging">Packaging charge</label>
+      <div class="unit-wrap">
+        <input type="number" id="ratePackaging" inputmode="decimal" min="0" step="1">
+        <span class="unit-tag">₹/order</span>
+      </div>
+    </div>
+
+    <div class="field numeric">
+      <label for="rateProfit">Profit margin</label>
+      <div class="unit-wrap">
+        <input type="number" id="rateProfit" inputmode="decimal" min="0" step="1">
+        <span class="unit-tag">%</span>
+      </div>
+    </div>
+
+    <button class="save-btn" id="saveSettingsBtn">Save settings</button>
+    <div class="save-hint" id="settingsHint">Settings updated</div>
+
+    <div class="sync-section">
+      <div class="sync-section-header">
+        <span class="sync-section-title">Sync across devices</span>
+        <span class="sync-status-dot" id="syncStatusDot"></span>
+      </div>
+      <div class="settings-note" id="syncNote">Set a sync code on this device, then enter the same code on your other device to keep your data in step. Anyone with the code can access your data, so keep it private.</div>
+      <div class="field">
+        <label for="syncCodeInput">Sync code</label>
+        <input type="text" id="syncCodeInput" placeholder="e.g. NIHAL2026" autocapitalize="characters">
+      </div>
+      <button class="save-btn" id="connectSyncBtn">Connect</button>
+      <button class="pill-btn" id="disconnectSyncBtn" style="width:100%; margin-top:10px; display:none; color: var(--danger);">Disconnect sync</button>
+    </div>
+
+    <button class="secret-trigger" id="secretTrigger" aria-label="More">···</button>
+    <div class="coupon-manager" id="couponManager">
+      <div class="settings-note">Manage discount codes. Applied at checkout by typing the code in the pricer's coupon field.</div>
+      <div class="coupon-list" id="couponList"></div>
+      <div class="field-row" style="margin-top:14px;">
+        <div class="field">
+          <label for="newCouponCode">Code</label>
+          <input type="text" id="newCouponCode" placeholder="e.g. DIWALI" autocapitalize="characters">
+        </div>
+        <div class="field numeric">
+          <label for="newCouponPercent">Discount</label>
+          <div class="unit-wrap">
+            <input type="number" id="newCouponPercent" placeholder="0" inputmode="decimal" min="0" max="100" step="1">
+            <span class="unit-tag">%</span>
+          </div>
+        </div>
+      </div>
+      <button class="save-btn" id="addCouponBtn">Add coupon</button>
+    </div>
+  </div>
+</div>
+
+<!-- Log Sheet -->
+<div class="overlay" id="logOverlay">
+  <div class="sheet">
+    <div class="sheet-header">
+      <span class="sheet-title">Sold prints</span>
+      <button class="sheet-close" id="closeLog" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="stats-strip">
+      <div class="stat-box">
+        <div class="stat-label">Total sold</div>
+        <div class="stat-value" id="statCount">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Revenue</div>
+        <div class="stat-value" id="statRevenue">₹0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Filament used</div>
+        <div class="stat-value" id="statFilament">0g</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Profit</div>
+        <div class="stat-value" id="statProfit">₹0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Profit %</div>
+        <div class="stat-value" id="statProfitPct">0%</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Labour cost</div>
+        <div class="stat-value" id="statLabour">₹0</div>
+      </div>
+    </div>
+
+    <div class="log-toolbar">
+      <button class="pill-btn" id="exportBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        Export CSV
+      </button>
+    </div>
+
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="searchInput" placeholder="Search customer or product">
+    </div>
+
+    <div class="filter-row" id="filterRow">
+      <button class="filter-chip active" data-filter="all">All</button>
+      <button class="filter-chip" data-filter="paid">Paid</button>
+      <button class="filter-chip" data-filter="unpaid">Unpaid</button>
+      <button class="filter-chip" data-filter="done">Done</button>
+      <button class="filter-chip" data-filter="pending">Pending</button>
+    </div>
+
+    <div class="log-list" id="logList"></div>
+  </div>
+</div>
+
+<!-- Bill Generator Sheet -->
+<div class="overlay" id="billOverlay">
+  <div class="sheet bill-sheet">
+    <div class="sheet-header">
+      <span class="sheet-title">Create bill</span>
+      <button class="sheet-close" id="closeBill" aria-label="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="bill-scroll-area" id="billScrollArea">
+      <div id="billPickerView">
+        <div class="field">
+          <label for="billCustomerName">Customer name</label>
+          <input type="text" id="billCustomerName" placeholder="e.g. Rakesh">
+        </div>
+
+        <div class="field">
+          <label for="billCouponInput">Coupon code (optional)</label>
+          <input type="text" id="billCouponInput" placeholder="e.g. FAMILY" autocapitalize="characters">
+          <div class="coupon-status" id="billCouponStatus"></div>
+        </div>
+
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="billSearchInput" placeholder="Search items to add">
+        </div>
+
+        <div class="settings-note" style="margin-bottom:10px;">Select the prints to include on this bill.</div>
+        <div class="log-list" id="billItemList"></div>
+      </div>
+
+      <div id="billResultView" style="display:none;">
+        <canvas id="billCanvas" style="display:none;"></canvas>
+        <img id="billPreviewImg" alt="Bill preview" style="width:100%; border-radius:14px; border:1px solid var(--panel-line);">
+      </div>
+    </div>
+
+    <div class="bill-sticky-footer" id="billStickyFooter">
+      <div class="bill-footer-bar" id="billFooterBar" style="margin-top:0; padding-top:0; border-top:none;">
+        <span class="bill-footer-count" id="billSelectedCount">0 selected</span>
+        <span class="bill-footer-total" id="billSelectedTotal">₹0</span>
+      </div>
+      <button class="save-btn" id="generateBillBtn" disabled>Generate bill image</button>
+
+      <div id="billResultActions" style="display:none;">
+        <button class="save-btn" id="downloadBillBtn">Download image</button>
+        <button class="pill-btn" id="backToBillPicker" style="width:100%; margin-top:10px;">Back to selection</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Storage ----------
+  const SETTINGS_KEY = "printLedger_settings_v1";
+  const LOG_KEY = "printLedger_log_v1";
+
+  const defaultSettings = {
+    filamentCostPerKg: 1200,  // ₹ per kg
+    printerWatts: 220,       // high-end draw for an FDM printer under load incl. bed heating
+    electricityRate: 9.5,    // ₹ per kWh — high-end Mangalore/MESCOM commercial-leaning tariff
+    labourRate: 40,          // ₹ per hour
+    packagingCost: 0,        // ₹ per order, flat
+    profitPercent: 35        // %
+  };
+
+  function loadSettings(){
+    try{
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if(!raw) return {...defaultSettings};
+      return {...defaultSettings, ...JSON.parse(raw)};
+    }catch(e){ return {...defaultSettings}; }
+  }
+
+  function saveSettings(s){
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+    if(typeof pushToSync === "function") pushToSync();
+  }
+
+  function loadLog(){
+    try{
+      const raw = localStorage.getItem(LOG_KEY);
+      if(!raw) return [];
+      return JSON.parse(raw);
+    }catch(e){ return []; }
+  }
+
+  function saveLog(entries){
+    localStorage.setItem(LOG_KEY, JSON.stringify(entries));
+    if(typeof pushToSync === "function") pushToSync();
+  }
+
+  // ---------- Coupons ----------
+  const COUPONS_KEY = "printLedger_coupons_v1";
+  const defaultCoupons = [
+    { code: "FAMILY", percent: 15 },
+    { code: "FIRST", percent: 25 },
+    { code: "REGULAR", percent: 20 }
+  ];
+  function loadCoupons(){
+    try{
+      const raw = localStorage.getItem(COUPONS_KEY);
+      if(!raw){ saveCoupons(defaultCoupons); return [...defaultCoupons]; }
+      return JSON.parse(raw);
+    }catch(e){ return [...defaultCoupons]; }
+  }
+  function saveCoupons(list){
+    localStorage.setItem(COUPONS_KEY, JSON.stringify(list));
+    if(typeof pushToSync === "function") pushToSync();
+  }
+  function findCoupon(code){
+    if(!code) return null;
+    const norm = code.trim().toUpperCase();
+    if(!norm) return null;
+    return coupons.find(c=> c.code.toUpperCase() === norm) || null;
+  }
+
+  // ---------- Cloud sync (Firebase Realtime Database) ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyD3YpAiS_yIGi3yWh-6_IDl_2J02oE6lVI",
+    authDomain: "printvault-ccd63.firebaseapp.com",
+    databaseURL: "https://printvault-ccd63-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "printvault-ccd63",
+    storageBucket: "printvault-ccd63.firebasestorage.app",
+    messagingSenderId: "172189940924",
+    appId: "1:172189940924:web:7d1a66888bfe3505b7a4b9"
+  };
+
+  const SYNC_CODE_KEY = "printLedger_syncCode_v1";
+  let syncCode = localStorage.getItem(SYNC_CODE_KEY) || "";
+  let syncDbRef = null;
+  let syncApp = null;
+  let syncPushTimer = null;
+  let applyingRemoteUpdate = false; // guard to avoid re-pushing data we just pulled
+
+  function sanitizeSyncCode(raw){
+    // Firebase RTDB paths can't contain . # $ [ ] / — strip anything unsafe, keep it simple
+    return (raw || "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+  }
+
+  function setSyncStatus(state){
+    // state: "idle" | "connected" | "syncing" | "error"
+    const dotClasses = ["connected", "syncing", "error"];
+    if(topbarSyncDot){
+      dotClasses.forEach(c=> topbarSyncDot.classList.remove(c));
+      if(state === "idle"){
+        topbarSyncDot.style.display = "none";
+      }else{
+        topbarSyncDot.style.display = "block";
+        topbarSyncDot.classList.add(state);
+      }
+    }
+    if(syncStatusDot){
+      dotClasses.forEach(c=> syncStatusDot.classList.remove(c));
+      if(state !== "idle") syncStatusDot.classList.add(state);
+    }
+  }
+
+  function initFirebaseIfNeeded(){
+    if(syncApp) return;
+    try{
+      syncApp = firebase.initializeApp(firebaseConfig);
+    }catch(e){
+      // already initialized (hot reload scenarios) — reuse existing app
+      syncApp = firebase.app();
+    }
+  }
+
+  function connectSync(code){
+    const clean = sanitizeSyncCode(code);
+    if(!clean){
+      showToast("Enter a sync code first");
+      return;
+    }
+    initFirebaseIfNeeded();
+    syncCode = clean;
+    localStorage.setItem(SYNC_CODE_KEY, syncCode);
+    syncDbRef = firebase.database().ref("syncedUsers/" + syncCode);
+
+    setSyncStatus("syncing");
+
+    // Listen for remote changes and merge them in
+    syncDbRef.on("value", (snapshot)=>{
+      const remote = snapshot.val();
+      setSyncStatus("connected");
+      if(!remote){
+        // Nothing on the server yet for this code — seed it with what's on this device.
+        pushToSync();
+        return;
+      }
+      applyingRemoteUpdate = true;
+      try{
+        if(remote.settings) { settings = {...defaultSettings, ...remote.settings}; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
+        if(remote.log) { log = remote.log; localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
+        if(remote.coupons) { coupons = remote.coupons; localStorage.setItem(COUPONS_KEY, JSON.stringify(coupons)); }
+        renderPrice();
+        renderLog();
+      }catch(err){
+        console.error("Sync merge error", err);
+      }
+      applyingRemoteUpdate = false;
+    }, (err)=>{
+      console.error("Sync read error", err);
+      setSyncStatus("error");
+    });
+
+    updateSyncUI();
+    showToast("Sync connected");
+  }
+
+  function disconnectSync(){
+    if(syncDbRef){ syncDbRef.off(); }
+    syncDbRef = null;
+    syncCode = "";
+    localStorage.removeItem(SYNC_CODE_KEY);
+    setSyncStatus("idle");
+    updateSyncUI();
+    showToast("Sync disconnected");
+  }
+
+  function pushToSync(){
+    if(!syncDbRef || applyingRemoteUpdate) return;
+    clearTimeout(syncPushTimer);
+    setSyncStatus("syncing");
+    syncPushTimer = setTimeout(()=>{
+      syncDbRef.set({
+        settings, log, coupons,
+        updatedAt: Date.now()
+      }).then(()=>{
+        setSyncStatus("connected");
+      }).catch((err)=>{
+        console.error("Sync push error", err);
+        setSyncStatus("error");
+      });
+    }, 600); // debounce rapid successive saves
+  }
+
+  function updateSyncUI(){
+    if(syncCode){
+      syncCodeInput.value = syncCode;
+      connectSyncBtn.textContent = "Reconnect";
+      disconnectSyncBtn.style.display = "block";
+      syncNote.textContent = "Connected. This device will auto-sync with any other device using the same code.";
+    }else{
+      connectSyncBtn.textContent = "Connect";
+      disconnectSyncBtn.style.display = "none";
+      syncNote.textContent = "Set a sync code on this device, then enter the same code on your other device to keep your data in step. Anyone with the code can access your data, so keep it private.";
+    }
+  }
+
+  const SEED_ENTRIES = [{"id": "imp91", "date": "2026-08-21T00:00:00", "product": "MACARON", "customer": "RAHIMATH", "weight": 48.0, "time": 2.6, "filamentCost": 43.2, "powerCost": 2.26, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 104.54, "total": 150.0, "paid": true, "printDone": true}, {"id": "imp90", "date": "2026-08-21T00:00:00", "product": "TRINKET DOUBLE BALL", "customer": "SIDDIQ", "weight": 113.0, "time": 2.6, "filamentCost": 101.7, "powerCost": 2.26, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 146.04, "total": 250.0, "paid": true, "printDone": true}, {"id": "imp89", "date": "2026-08-20T00:00:00", "product": "EGG TRAY", "customer": "TAZWEEN", "weight": 300.0, "time": 8.8, "filamentCost": 270.0, "powerCost": 7.66, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 122.34, "total": 400.0, "paid": true, "printDone": true}, {"id": "imp88", "date": "2026-08-19T00:00:00", "product": "LAPTOP STAND", "customer": "RAAHIL", "weight": 100.0, "time": 3.0, "filamentCost": 90.0, "powerCost": 2.61, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 207.39, "total": 300.0, "paid": true, "printDone": true}, {"id": "imp87", "date": "2026-08-19T00:00:00", "product": "Z RING", "customer": "AYMAN", "weight": 30.0, "time": 3.0, "filamentCost": 27.0, "powerCost": 2.61, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 270.39, "total": 300.0, "paid": true, "printDone": true}, {"id": "imp86", "date": "2026-08-17T00:00:00", "product": "copter toy", "customer": "BAWA", "weight": 17.0, "time": 1.0, "filamentCost": 15.3, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 33.83, "total": 50.0, "paid": true, "printDone": true}, {"id": "imp85", "date": "2026-08-17T00:00:00", "product": "copter toy", "customer": "BAWA", "weight": 17.0, "time": 1.0, "filamentCost": 15.3, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 33.83, "total": 50.0, "paid": true, "printDone": true}, {"id": "imp84", "date": "2026-08-17T00:00:00", "product": "copter toy", "customer": "BAWA", "weight": 17.0, "time": 1.0, "filamentCost": 15.3, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 33.83, "total": 50.0, "paid": true, "printDone": true}, {"id": "imp83", "date": "2026-08-17T00:00:00", "product": "copter toy", "customer": "BAWA", "weight": 17.0, "time": 1.0, "filamentCost": 15.3, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 33.83, "total": 50.0, "paid": true, "printDone": true}, {"id": "imp82", "date": "2026-08-17T00:00:00", "product": "copter toy", "customer": "BAWA", "weight": 17.0, "time": 1.0, "filamentCost": 15.3, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 33.83, "total": 50.0, "paid": true, "printDone": true}, {"id": "imp81", "date": "2026-08-17T00:00:00", "product": "oreo cable winder ( large )", "customer": "BAWA", "weight": 50.0, "time": 2.5, "filamentCost": 45.0, "powerCost": 2.17, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 152.82, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp80", "date": "2026-08-17T00:00:00", "product": "MACARON", "customer": "MOM", "weight": 48.0, "time": 2.5, "filamentCost": 43.2, "powerCost": 2.17, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 104.62, "total": 150.0, "paid": true, "printDone": true}, {"id": "imp79", "date": "2026-08-17T00:00:00", "product": "MACARON", "customer": "MOM", "weight": 48.0, "time": 2.5, "filamentCost": 43.2, "powerCost": 2.17, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 104.62, "total": 150.0, "paid": true, "printDone": true}, {"id": "imp78", "date": "2026-08-17T00:00:00", "product": "BEDSIDE PHONE STAND", "customer": "TASLEEMA", "weight": 60.0, "time": 3.0, "filamentCost": 42.0, "powerCost": 2.61, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 105.39, "total": 150.0, "paid": true, "printDone": true}, {"id": "imp77", "date": "2026-08-17T00:00:00", "product": "PHONE STAND", "customer": "AYISHA", "weight": 114.0, "time": 4.2, "filamentCost": 79.8, "powerCost": 3.65, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 116.55, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp76", "date": "2026-08-17T00:00:00", "product": "PHONE STAND", "customer": "THOUSEEF", "weight": 80.0, "time": 4.5, "filamentCost": 72.0, "powerCost": 3.92, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 124.08, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp75", "date": "2026-08-17T00:00:00", "product": "TISSUE BOX", "customer": "AYISHA", "weight": 300.0, "time": 11.0, "filamentCost": 270.0, "powerCost": 9.57, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 120.43, "total": 400.0, "paid": true, "printDone": true}, {"id": "imp74", "date": "2026-08-13T00:00:00", "product": "medbox", "customer": "ASHFIYA", "weight": 332.0, "time": 9.0, "filamentCost": 298.8, "powerCost": 7.83, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 343.37, "total": 650.0, "paid": true, "printDone": true}, {"id": "imp73", "date": "2026-08-13T00:00:00", "product": "Ghost", "customer": "LISAAN", "weight": 61.0, "time": 4.0, "filamentCost": 54.9, "powerCost": 3.48, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 41.62, "total": 100.0, "paid": true, "printDone": true}, {"id": "imp72", "date": "2026-08-12T00:00:00", "product": "Ghost", "customer": "LISAAN", "weight": 61.0, "time": 4.0, "filamentCost": 54.9, "powerCost": 3.48, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 41.62, "total": 100.0, "paid": true, "printDone": true}, {"id": "imp71", "date": "2026-08-10T00:00:00", "product": "PHONE STAND", "customer": "NAFIYA", "weight": 114.0, "time": 4.2, "filamentCost": 79.8, "powerCost": 3.65, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 116.55, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp70", "date": "2026-08-10T00:00:00", "product": "card box", "customer": "FAHIM", "weight": 31.0, "time": 1.0, "filamentCost": 27.9, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 71.23, "total": 100.0, "paid": true, "printDone": true}, {"id": "imp69", "date": "2026-08-10T00:00:00", "product": "oreo cable winder ( large )", "customer": "FAHIM", "weight": 50.0, "time": 2.5, "filamentCost": 45.0, "powerCost": 2.17, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 152.82, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp68", "date": "2026-08-10T00:00:00", "product": "oreo cable winder ( large )", "customer": "FAHIM", "weight": 50.0, "time": 2.5, "filamentCost": 45.0, "powerCost": 2.17, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 152.82, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp67", "date": "2026-08-10T00:00:00", "product": "oreo cable winder", "customer": "", "weight": 32.0, "time": 2.0, "filamentCost": 28.8, "powerCost": 1.74, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -30.54, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp66", "date": "2026-08-10T00:00:00", "product": "oreo cable winder", "customer": "", "weight": 32.0, "time": 2.0, "filamentCost": 28.8, "powerCost": 1.74, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -30.54, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp65", "date": "2026-08-10T00:00:00", "product": "dino", "customer": "kid 4", "weight": 15.0, "time": 1.0, "filamentCost": 13.5, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -14.37, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp64", "date": "2026-08-10T00:00:00", "product": "dino", "customer": "kid3", "weight": 15.0, "time": 1.0, "filamentCost": 13.5, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -14.37, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp63", "date": "2026-08-10T00:00:00", "product": "dino", "customer": "kid 2", "weight": 15.0, "time": 1.0, "filamentCost": 13.5, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -14.37, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp62", "date": "2026-08-10T00:00:00", "product": "dino", "customer": "kid 1", "weight": 15.0, "time": 1.0, "filamentCost": 13.5, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -14.37, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp61", "date": "2026-08-08T00:00:00", "product": "copter toy", "customer": "Bava", "weight": 17.0, "time": 1.0, "filamentCost": 15.3, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 33.83, "total": 50.0, "paid": true, "printDone": true}, {"id": "imp60", "date": "2026-08-08T00:00:00", "product": "copter toy", "customer": "Bava", "weight": 17.0, "time": 1.0, "filamentCost": 15.3, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 33.83, "total": 50.0, "paid": true, "printDone": true}, {"id": "imp59", "date": "2026-08-08T00:00:00", "product": "EGG TRAY", "customer": "Fauziya", "weight": 210.0, "time": 8.0, "filamentCost": 189.0, "powerCost": 6.96, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 204.04, "total": 400.0, "paid": true, "printDone": true}, {"id": "imp58", "date": "2026-08-08T00:00:00", "product": "phone stand", "customer": "Fauziya", "weight": 100.0, "time": 4.0, "filamentCost": 90.0, "powerCost": 3.48, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 106.52, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp57", "date": "2026-08-08T00:00:00", "product": "Ghost", "customer": "LISAAN", "weight": 61.0, "time": 4.0, "filamentCost": 54.9, "powerCost": 3.48, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 41.62, "total": 100.0, "paid": true, "printDone": true}, {"id": "imp56", "date": "2026-08-08T00:00:00", "product": "headphone STAND", "customer": "Nasir", "weight": 200.0, "time": 5.0, "filamentCost": 180.0, "powerCost": 4.35, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 215.65, "total": 400.0, "paid": true, "printDone": true}, {"id": "imp55", "date": "2026-08-08T00:00:00", "product": "headphone STAND", "customer": "Nasir", "weight": 200.0, "time": 5.0, "filamentCost": 180.0, "powerCost": 4.35, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 215.65, "total": 400.0, "paid": true, "printDone": true}, {"id": "imp54", "date": "2026-08-08T00:00:00", "product": "remote stand", "customer": "Nasir", "weight": 80.0, "time": 2.0, "filamentCost": 72.0, "powerCost": 1.74, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 126.26, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp53", "date": "2026-08-08T00:00:00", "product": "remote stand", "customer": "Nasir", "weight": 80.0, "time": 2.0, "filamentCost": 72.0, "powerCost": 1.74, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 126.26, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp52", "date": "2026-08-08T00:00:00", "product": "remote stand", "customer": "Nasir", "weight": 80.0, "time": 2.0, "filamentCost": 72.0, "powerCost": 1.74, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 126.26, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp51", "date": "2026-08-05T00:00:00", "product": "laptop tablet stand", "customer": "Fahim", "weight": 360.0, "time": 10.0, "filamentCost": 324.0, "powerCost": 8.7, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 167.3, "total": 500.0, "paid": true, "printDone": true}, {"id": "imp50", "date": "2026-08-04T00:00:00", "product": "desk organiser", "customer": "Nousheer", "weight": 190.0, "time": 5.0, "filamentCost": 171.0, "powerCost": 4.35, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 224.65, "total": 400.0, "paid": true, "printDone": true}, {"id": "imp49", "date": "2026-08-04T00:00:00", "product": "pen stand japandi", "customer": "Nousheer", "weight": 187.0, "time": 6.0, "filamentCost": 168.3, "powerCost": 5.22, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 226.48, "total": 400.0, "paid": true, "printDone": true}, {"id": "imp48", "date": "2026-08-04T00:00:00", "product": "macaron cable winder", "customer": "Ayesha", "weight": 48.0, "time": 2.5, "filamentCost": 43.2, "powerCost": 2.17, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 104.62, "total": 150.0, "paid": true, "printDone": true}, {"id": "imp47", "date": "2026-08-04T00:00:00", "product": "karambit val", "customer": "Nawaz", "weight": 50.0, "time": 6.0, "filamentCost": 45.0, "powerCost": 5.22, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 199.78, "total": 250.0, "paid": true, "printDone": true}, {"id": "imp46", "date": "2026-08-04T00:00:00", "product": "oreo cable winder", "customer": "Ayesha", "weight": 32.0, "time": 2.0, "filamentCost": 28.8, "powerCost": 1.74, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 119.46, "total": 150.0, "paid": true, "printDone": true}, {"id": "imp45", "date": "2026-08-02T00:00:00", "product": "batarang", "customer": "Nehan", "weight": 0.0, "time": 0.0, "filamentCost": 0.0, "powerCost": 0.0, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 50.0, "total": 50.0, "paid": true, "printDone": true}, {"id": "imp44", "date": "2026-08-02T00:00:00", "product": "EGG TRAY", "customer": "Sahul hameed", "weight": 300.0, "time": 8.8, "filamentCost": 270.0, "powerCost": 7.66, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 222.34, "total": 500.0, "paid": true, "printDone": true}, {"id": "imp43", "date": "2026-08-02T00:00:00", "product": "key hanger", "customer": "sahul hameed", "weight": 381.0, "time": 12.0, "filamentCost": 342.9, "powerCost": 10.44, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 196.66, "total": 550.0, "paid": true, "printDone": true}, {"id": "imp42", "date": "2026-07-31T00:00:00", "product": "Shell trinket", "customer": "Noora", "weight": 128.0, "time": 8.2, "filamentCost": 115.2, "powerCost": 7.13, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 227.67, "total": 350.0, "paid": true, "printDone": true}, {"id": "imp41", "date": "2026-07-31T00:00:00", "product": "macaron cable winder", "customer": "Rahima", "weight": 48.0, "time": 2.5, "filamentCost": 43.2, "powerCost": 2.17, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 104.62, "total": 150.0, "paid": true, "printDone": true}, {"id": "imp40", "date": "2026-07-30T00:00:00", "product": "copter toy", "customer": "Bava", "weight": 17.0, "time": 1.0, "filamentCost": 15.3, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 33.83, "total": 50.0, "paid": true, "printDone": true}, {"id": "imp39", "date": "2026-07-30T00:00:00", "product": "copter toy", "customer": "Bava", "weight": 17.0, "time": 1.0, "filamentCost": 15.3, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 33.83, "total": 50.0, "paid": true, "printDone": true}, {"id": "imp38", "date": "2026-07-30T00:00:00", "product": "bedside", "customer": "siddiq", "weight": 187.0, "time": 4.2, "filamentCost": 168.3, "powerCost": 3.65, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 228.05, "total": 400.0, "paid": true, "printDone": true}, {"id": "imp37", "date": "2026-07-30T00:00:00", "product": "phone stand", "customer": "siddiq", "weight": 84.0, "time": 3.4, "filamentCost": 75.6, "powerCost": 2.96, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 171.44, "total": 250.0, "paid": true, "printDone": true}, {"id": "imp36", "date": "2026-07-14T00:00:00", "product": "TISSUE BOX", "customer": "KHADER JAYAPURA", "weight": 300.0, "time": 11.0, "filamentCost": 270.0, "powerCost": 9.57, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 120.43, "total": 400.0, "paid": true, "printDone": true}, {"id": "imp35", "date": "2026-07-14T00:00:00", "product": "EGG TRAY", "customer": "LISAAN", "weight": 300.0, "time": 8.8, "filamentCost": 270.0, "powerCost": 7.66, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 172.34, "total": 450.0, "paid": true, "printDone": true}, {"id": "imp34", "date": "2026-07-09T00:00:00", "product": "CAN GUN", "customer": "LISAAN", "weight": 90.0, "time": 2.3, "filamentCost": 81.0, "powerCost": 2.0, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 152.0, "total": 235.0, "paid": true, "printDone": true}, {"id": "imp33", "date": "2026-07-08T00:00:00", "product": "HEADPHONE STAND", "customer": "RAAHIL", "weight": 200.0, "time": 6.33, "filamentCost": 160.0, "powerCost": 5.51, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 84.49, "total": 250.0, "paid": true, "printDone": true}, {"id": "imp32", "date": "2026-07-08T00:00:00", "product": "KARAMBIT", "customer": "RAAHIL", "weight": 50.0, "time": 5.4, "filamentCost": 45.0, "powerCost": 4.7, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 150.3, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp31", "date": "2026-07-08T00:00:00", "product": "KEYBOARD CABLE", "customer": "RAAHIL", "weight": 10.0, "time": 1.0, "filamentCost": 8.0, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -8.87, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp30", "date": "2026-07-07T00:00:00", "product": "CABLE WINDER", "customer": "AHMED", "weight": 40.0, "time": 1.3, "filamentCost": 32.0, "powerCost": 1.13, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 36.87, "total": 70.0, "paid": true, "printDone": true}, {"id": "imp29", "date": "2026-07-07T00:00:00", "product": "CABLE WINDER", "customer": "AHMED", "weight": 40.0, "time": 1.3, "filamentCost": 32.0, "powerCost": 1.13, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 36.87, "total": 70.0, "paid": true, "printDone": true}, {"id": "imp28", "date": "2026-07-06T00:00:00", "product": "BIG HERO 6 MAGNETIC", "customer": "SHAMIL", "weight": 100.0, "time": 6.15, "filamentCost": 80.0, "powerCost": 5.35, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 64.65, "total": 150.0, "paid": true, "printDone": true}, {"id": "imp27", "date": "2026-07-06T00:00:00", "product": "KEYRAMBIT", "customer": "SHAMIL", "weight": 5.0, "time": 0.33, "filamentCost": 4.0, "powerCost": 0.29, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 45.71, "total": 50.0, "paid": true, "printDone": true}, {"id": "imp26", "date": "2026-07-05T00:00:00", "product": "TRINKET SHELL BOW", "customer": "SHABNAZ", "weight": 63.0, "time": 2.4, "filamentCost": 44.1, "powerCost": 2.09, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 108.81, "total": 155.0, "paid": true, "printDone": true}, {"id": "imp25", "date": "2026-07-05T00:00:00", "product": "APPLE WATCH STAND", "customer": "SHELDON", "weight": 23.0, "time": 2.1, "filamentCost": 18.4, "powerCost": 1.83, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 79.77, "total": 100.0, "paid": true, "printDone": true}, {"id": "imp24", "date": "2026-07-04T00:00:00", "product": "PHONE STAND", "customer": "AMEEN", "weight": 114.0, "time": 4.2, "filamentCost": 79.8, "powerCost": 3.65, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 66.55, "total": 150.0, "paid": true, "printDone": true}, {"id": "imp23", "date": "2026-06-30T00:00:00", "product": "IPA", "customer": "TOOLS", "weight": 0.0, "time": 0.0, "filamentCost": 0.0, "powerCost": 0.0, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": 0.0, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp22", "date": "2026-06-30T00:00:00", "product": "GLUE", "customer": "TOOLS", "weight": 0.0, "time": 0.0, "filamentCost": 0.0, "powerCost": 0.0, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": 0.0, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp21", "date": "2026-06-30T00:00:00", "product": "TEST PRINT", "customer": "TEST", "weight": 100.0, "time": 3.0, "filamentCost": 70.0, "powerCost": 2.61, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -72.61, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp20", "date": "2026-06-29T00:00:00", "product": "JEWELLERY HOLDER", "customer": "RIDA", "weight": 85.0, "time": 4.5, "filamentCost": 59.5, "powerCost": 3.92, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 86.59, "total": 150.0, "paid": true, "printDone": true}, {"id": "imp19", "date": "2026-06-29T00:00:00", "product": "TISSUE BOX", "customer": "SHAMMI", "weight": 260.0, "time": 13.66, "filamentCost": 182.0, "powerCost": 11.88, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 81.12, "total": 275.0, "paid": true, "printDone": true}, {"id": "imp18", "date": "2026-06-29T00:00:00", "product": "HEADPHONE STAND", "customer": "SHAMMI", "weight": 225.0, "time": 7.2, "filamentCost": 157.5, "powerCost": 6.26, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 86.24, "total": 250.0, "paid": true, "printDone": true}, {"id": "imp17", "date": "2026-06-29T00:00:00", "product": "PHONE STAND", "customer": "SHAMMI", "weight": 114.0, "time": 4.2, "filamentCost": 79.8, "powerCost": 3.65, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 66.55, "total": 150.0, "paid": true, "printDone": true}, {"id": "imp16", "date": "2026-06-29T00:00:00", "product": "SKADIS HOOKS", "customer": "ME", "weight": 15.5, "time": 0.66, "filamentCost": 10.85, "powerCost": 0.57, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -11.42, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp15", "date": "2026-06-28T00:00:00", "product": "SHURIKEN", "customer": "NEHAN", "weight": 16.0, "time": 1.0, "filamentCost": 11.2, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 107.93, "total": 120.0, "paid": true, "printDone": true}, {"id": "imp14", "date": "2026-06-28T00:00:00", "product": "PROPELLER", "customer": "NEHAN", "weight": 14.0, "time": 1.0, "filamentCost": 9.8, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 29.33, "total": 40.0, "paid": true, "printDone": true}, {"id": "imp13", "date": "2026-06-28T00:00:00", "product": "FROGY", "customer": "TAIBA", "weight": 38.0, "time": 3.0, "filamentCost": 26.6, "powerCost": 2.61, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 100.79, "total": 130.0, "paid": true, "printDone": true}, {"id": "imp12", "date": "2026-06-28T00:00:00", "product": "PEGBOARD", "customer": "ME", "weight": 70.0, "time": 2.1, "filamentCost": 49.0, "powerCost": 1.83, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -50.83, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp11", "date": "2026-06-28T00:00:00", "product": "JAPANDI CAT", "customer": "ME", "weight": 15.0, "time": 1.0, "filamentCost": 10.5, "powerCost": 0.87, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -11.37, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp10", "date": "2026-06-28T00:00:00", "product": "KARAMBIT", "customer": "ME", "weight": 19.0, "time": 1.3, "filamentCost": 13.3, "powerCost": 1.13, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -14.43, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp9", "date": "2026-06-27T00:00:00", "product": "BREAD CLIP", "customer": "MOM", "weight": 13.0, "time": 0.66, "filamentCost": 9.1, "powerCost": 0.57, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -9.67, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp8", "date": "2026-06-27T00:00:00", "product": "TRINKET DOUBLE BALL", "customer": "NOOHA", "weight": 113.0, "time": 2.6, "filamentCost": 79.1, "powerCost": 2.26, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -81.36, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp7", "date": "2026-06-27T00:00:00", "product": "DINO JIBBITZ", "customer": "NEHAN", "weight": 2.0, "time": 0.16, "filamentCost": 1.4, "powerCost": 0.14, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 18.46, "total": 20.0, "paid": true, "printDone": true}, {"id": "imp6", "date": "2026-06-27T00:00:00", "product": "CLIP BAG", "customer": "MOM", "weight": 42.0, "time": 1.5, "filamentCost": 29.4, "powerCost": 1.3, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -30.7, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp5", "date": "2026-06-27T00:00:00", "product": "BAMBU SCRAPER", "customer": "ME", "weight": 17.0, "time": 0.66, "filamentCost": 11.9, "powerCost": 0.57, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -12.47, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp4", "date": "2026-06-27T00:00:00", "product": "CUSTOMIZED BOX CHARGER", "customer": "AQEEL", "weight": 76.0, "time": 2.7, "filamentCost": 53.2, "powerCost": 2.35, "labourCost": 0, "packagingCost": 0, "type": "Sale", "profitCost": 144.45, "total": 200.0, "paid": true, "printDone": true}, {"id": "imp3", "date": "2026-06-27T00:00:00", "product": "TRINKET SINGLE BALL", "customer": "NISHMA", "weight": 72.0, "time": 2.3, "filamentCost": 50.4, "powerCost": 2.0, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -52.4, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp2", "date": "2026-06-26T00:00:00", "product": "FROGY", "customer": "NEHAN", "weight": 38.0, "time": 3.0, "filamentCost": 26.6, "powerCost": 2.61, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -29.21, "total": 0.0, "paid": true, "printDone": true}, {"id": "imp1", "date": "2026-06-26T00:00:00", "product": "BENCHY", "customer": "TEST", "weight": 11.0, "time": 0.33, "filamentCost": 7.7, "powerCost": 0.29, "labourCost": 0, "packagingCost": 0, "type": "Freebie", "profitCost": -7.99, "total": 0.0, "paid": true, "printDone": true}];
+  const SEED_FLAG_KEY = "printLedger_seeded_v2";
+
+  function applySeedIfNeeded(){
+    const alreadySeeded = localStorage.getItem(SEED_FLAG_KEY);
+    if(alreadySeeded) return;
+    saveLog(SEED_ENTRIES);
+    localStorage.setItem(SEED_FLAG_KEY, "1");
+  }
+  applySeedIfNeeded();
+
+  // One-time migration: mark all historical CSV-imported prints (id starts with "imp")
+  // as paid and print-done, since they're completed past sales, not open orders.
+  const MIGRATION_FLAG_KEY = "printLedger_migration_paidDone_v1";
+  function applyPaidDoneMigrationIfNeeded(){
+    const alreadyRun = localStorage.getItem(MIGRATION_FLAG_KEY);
+    if(alreadyRun) return;
+    const entries = loadLog();
+    let changed = false;
+    entries.forEach(e=>{
+      if(typeof e.id === "string" && e.id.startsWith("imp")){
+        if(!e.paid){ e.paid = true; changed = true; }
+        if(!e.printDone){ e.printDone = true; changed = true; }
+      }
+    });
+    if(changed) saveLog(entries);
+    localStorage.setItem(MIGRATION_FLAG_KEY, "1");
+  }
+  applyPaidDoneMigrationIfNeeded();
+
+  // One-time migration: update FIRST coupon from 30% to 25%, only if it's
+  // still at the old default value (won't override a manual edit to something else).
+  const COUPON_FIX_FLAG_KEY = "printLedger_migration_firstCoupon25_v1";
+  function applyFirstCouponFixIfNeeded(){
+    const alreadyRun = localStorage.getItem(COUPON_FIX_FLAG_KEY);
+    if(alreadyRun) return;
+    try{
+      const raw = localStorage.getItem(COUPONS_KEY);
+      if(raw){
+        const list = JSON.parse(raw);
+        const first = list.find(c=> c.code && c.code.toUpperCase() === "FIRST");
+        if(first && first.percent === 30){
+          first.percent = 25;
+          localStorage.setItem(COUPONS_KEY, JSON.stringify(list));
+        }
+      }
+    }catch(e){ /* ignore */ }
+    localStorage.setItem(COUPON_FIX_FLAG_KEY, "1");
+  }
+  applyFirstCouponFixIfNeeded();
+
+  let settings = loadSettings();
+  let log = loadLog();
+  let coupons = loadCoupons();
+
+  // ---------- DOM refs ----------
+  const productName = document.getElementById("productName");
+  const customerName = document.getElementById("customerName");
+  const filamentWeight = document.getElementById("filamentWeight");
+  const printTime = document.getElementById("printTime");
+  const couponInput = document.getElementById("couponInput");
+  const couponStatus = document.getElementById("couponStatus");
+  const packagingToggle = document.getElementById("packagingToggle");
+  const freebieToggle = document.getElementById("freebieToggle");
+  const saveBtn = document.getElementById("saveBtn");
+  const saveHint = document.getElementById("saveHint");
+  const partNameEcho = document.getElementById("partNameEcho");
+  const priceDisplay = document.getElementById("priceDisplay");
+  const priceValueWrap = document.getElementById("priceValueWrap");
+  const priceOverrideRow = document.getElementById("priceOverrideRow");
+  const priceOverrideInput = document.getElementById("priceOverrideInput");
+  const clearOverrideBtn = document.getElementById("clearOverrideBtn");
+
+  const settingsBtn = document.getElementById("settingsBtn");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const closeSettings = document.getElementById("closeSettings");
+  const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+  const settingsHint = document.getElementById("settingsHint");
+
+  const rateFilament = document.getElementById("rateFilament");
+  const ratePower = document.getElementById("ratePower");
+  const rateElectricity = document.getElementById("rateElectricity");
+  const rateLabour = document.getElementById("rateLabour");
+  const ratePackaging = document.getElementById("ratePackaging");
+  const rateProfit = document.getElementById("rateProfit");
+
+  const topbarSyncDot = document.getElementById("topbarSyncDot");
+  const syncStatusDot = document.getElementById("syncStatusDot");
+  const syncNote = document.getElementById("syncNote");
+  const syncCodeInput = document.getElementById("syncCodeInput");
+  const connectSyncBtn = document.getElementById("connectSyncBtn");
+  const disconnectSyncBtn = document.getElementById("disconnectSyncBtn");
+
+  const secretTrigger = document.getElementById("secretTrigger");
+  const couponManager = document.getElementById("couponManager");
+  const couponList = document.getElementById("couponList");
+  const newCouponCode = document.getElementById("newCouponCode");
+  const newCouponPercent = document.getElementById("newCouponPercent");
+  const addCouponBtn = document.getElementById("addCouponBtn");
+
+  const logBtn = document.getElementById("logBtn");
+  const logOverlay = document.getElementById("logOverlay");
+  const closeLog = document.getElementById("closeLog");
+  const logList = document.getElementById("logList");
+  const searchInput = document.getElementById("searchInput");
+  const filterRow = document.getElementById("filterRow");
+
+  const billBtn = document.getElementById("billBtn");
+  const billOverlay = document.getElementById("billOverlay");
+  const closeBill = document.getElementById("closeBill");
+  const billScrollArea = document.getElementById("billScrollArea");
+  const billPickerView = document.getElementById("billPickerView");
+  const billResultView = document.getElementById("billResultView");
+  const billFooterBar = document.getElementById("billFooterBar");
+  const billResultActions = document.getElementById("billResultActions");
+  const billCustomerName = document.getElementById("billCustomerName");
+  const billCouponInput = document.getElementById("billCouponInput");
+  const billCouponStatus = document.getElementById("billCouponStatus");
+  const billSearchInput = document.getElementById("billSearchInput");
+  const billItemList = document.getElementById("billItemList");
+  const billSelectedCount = document.getElementById("billSelectedCount");
+  const billSelectedTotal = document.getElementById("billSelectedTotal");
+  const generateBillBtn = document.getElementById("generateBillBtn");
+  const billCanvas = document.getElementById("billCanvas");
+  const billPreviewImg = document.getElementById("billPreviewImg");
+  const downloadBillBtn = document.getElementById("downloadBillBtn");
+  const backToBillPicker = document.getElementById("backToBillPicker");
+  const statCount = document.getElementById("statCount");
+  const statRevenue = document.getElementById("statRevenue");
+  const statFilament = document.getElementById("statFilament");
+  const statProfit = document.getElementById("statProfit");
+  const statProfitPct = document.getElementById("statProfitPct");
+  const statLabour = document.getElementById("statLabour");
+
+  const exportBtn = document.getElementById("exportBtn");
+  const toast = document.getElementById("toast");
+
+  // ---------- Formatting ----------
+  function inr(n){
+    return "₹" + Math.round(n).toLocaleString("en-IN");
+  }
+  function inrPrecise(n){
+    return Number(n).toLocaleString("en-IN", {maximumFractionDigits: 2});
+  }
+
+  // ---------- Core pricing ----------
+  let packagingOn = false;
+  let freebieOn = false;
+  let priceOverride = null;
+
+  function computePrice(){
+    const w = parseFloat(filamentWeight.value) || 0;
+    const t = parseFloat(printTime.value) || 0;
+
+    const filamentCost = (w / 1000) * settings.filamentCostPerKg;
+    const powerKwh = (settings.printerWatts / 1000) * t;
+    const powerCost = powerKwh * settings.electricityRate;
+    const labourCost = t * settings.labourRate;
+    const packagingCost = packagingOn ? (settings.packagingCost || 0) : 0;
+
+    const subtotal = filamentCost + powerCost + labourCost + packagingCost;
+    const profitCost = subtotal * (settings.profitPercent / 100);
+    let total = subtotal + profitCost;
+
+    const coupon = findCoupon(couponInput.value);
+    let discount = 0;
+    if(coupon){
+      discount = total * (coupon.percent / 100);
+      total = total - discount;
+    }
+
+    if(priceOverride !== null && !isNaN(priceOverride)){
+      total = priceOverride;
+    }
+
+    if(freebieOn) total = 0;
+
+    return { filamentCost, powerCost, labourCost, packagingCost, profitCost, discount, coupon, total };
+  }
+
+  function renderPrice(){
+    const { total, coupon, discount } = computePrice();
+
+    priceDisplay.textContent = inrPrecise(total);
+    partNameEcho.textContent = productName.value.trim() || "—";
+    priceValueWrap.classList.toggle("overridden", priceOverride !== null && !freebieOn);
+
+    const rawCode = couponInput.value.trim();
+    if(!rawCode){
+      couponStatus.textContent = "";
+      couponStatus.className = "coupon-status";
+    }else if(coupon){
+      couponStatus.textContent = `${coupon.code.toUpperCase()} applied — ${coupon.percent}% off (−${inr(discount)})`;
+      couponStatus.className = "coupon-status applied";
+    }else{
+      couponStatus.textContent = "Coupon not recognised";
+      couponStatus.className = "coupon-status invalid";
+    }
+
+    const w = parseFloat(filamentWeight.value) || 0;
+    const t = parseFloat(printTime.value) || 0;
+    const hasEnoughData = w > 0 && t > 0 && productName.value.trim().length > 0;
+    saveBtn.disabled = !hasEnoughData;
+  }
+
+  [productName, customerName, filamentWeight, printTime, couponInput].forEach(el=>{
+    el.addEventListener("input", renderPrice);
+  });
+
+  // Long-press the price to reveal a manual override input (secret, no visible button)
+  let priceLongPressTimer = null;
+  function startPriceLongPress(){
+    priceLongPressTimer = setTimeout(()=>{
+      const { total } = computePrice();
+      priceOverrideInput.value = Math.round(total);
+      priceOverrideRow.style.display = "flex";
+      priceOverrideInput.focus();
+    }, 550);
+  }
+  function cancelPriceLongPress(){
+    if(priceLongPressTimer){ clearTimeout(priceLongPressTimer); priceLongPressTimer = null; }
+  }
+  priceValueWrap.addEventListener("touchstart", startPriceLongPress, {passive:true});
+  priceValueWrap.addEventListener("touchend", cancelPriceLongPress);
+  priceValueWrap.addEventListener("touchmove", cancelPriceLongPress);
+  priceValueWrap.addEventListener("mousedown", startPriceLongPress);
+  priceValueWrap.addEventListener("mouseup", cancelPriceLongPress);
+  priceValueWrap.addEventListener("mouseleave", cancelPriceLongPress);
+
+  priceOverrideInput.addEventListener("input", ()=>{
+    const v = parseFloat(priceOverrideInput.value);
+    priceOverride = isNaN(v) ? null : v;
+    renderPrice();
+  });
+
+  priceOverrideInput.addEventListener("blur", ()=>{
+    setTimeout(()=>{
+      priceOverrideRow.style.display = "none";
+    }, 150);
+  });
+
+  priceOverrideInput.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter"){ priceOverrideInput.blur(); }
+  });
+
+  clearOverrideBtn.addEventListener("click", ()=>{
+    priceOverride = null;
+    priceOverrideRow.style.display = "none";
+    renderPrice();
+  });
+
+  function setSwitch(btn, on){
+    btn.setAttribute("aria-checked", on ? "true" : "false");
+  }
+
+  packagingToggle.addEventListener("click", ()=>{
+    packagingOn = !packagingOn;
+    setSwitch(packagingToggle, packagingOn);
+    renderPrice();
+  });
+
+  freebieToggle.addEventListener("click", ()=>{
+    freebieOn = !freebieOn;
+    setSwitch(freebieToggle, freebieOn);
+    renderPrice();
+  });
+
+  // ---------- Toast ----------
+  let toastTimer;
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> toast.classList.remove("show"), 2200);
+  }
+
+  // ---------- Save sale ----------
+  saveBtn.addEventListener("click", ()=>{
+    const { filamentCost, powerCost, labourCost, packagingCost, profitCost, discount, coupon, total } = computePrice();
+    const entry = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2,7),
+      date: new Date().toISOString(),
+      product: productName.value.trim(),
+      customer: customerName.value.trim(),
+      weight: parseFloat(filamentWeight.value) || 0,
+      time: parseFloat(printTime.value) || 0,
+      filamentCost, powerCost, labourCost, packagingCost, profitCost,
+      couponCode: coupon ? coupon.code.toUpperCase() : "",
+      couponPercent: coupon ? coupon.percent : 0,
+      discount: discount || 0,
+      total,
+      type: freebieOn ? "Freebie" : "Sale",
+      paid: freebieOn ? true : false,
+      printDone: false
+    };
+    log.unshift(entry);
+    saveLog(log);
+
+    saveHint.classList.add("show");
+    setTimeout(()=> saveHint.classList.remove("show"), 1800);
+
+    productName.value = "";
+    customerName.value = "";
+    filamentWeight.value = "";
+    printTime.value = "";
+    couponInput.value = "";
+    packagingOn = false;
+    freebieOn = false;
+    priceOverride = null;
+    priceOverrideRow.style.display = "none";
+    setSwitch(packagingToggle, false);
+    setSwitch(freebieToggle, false);
+    renderPrice();
+    renderLog();
+  });
+
+  // ---------- Settings sheet ----------
+  function openSettingsForm(){
+    rateFilament.value = settings.filamentCostPerKg;
+    ratePower.value = settings.printerWatts;
+    rateElectricity.value = settings.electricityRate;
+    rateLabour.value = settings.labourRate;
+    ratePackaging.value = settings.packagingCost;
+    rateProfit.value = settings.profitPercent;
+  }
+
+  settingsBtn.addEventListener("click", ()=>{
+    openSettingsForm();
+    settingsOverlay.classList.add("open");
+  });
+  closeSettings.addEventListener("click", ()=> settingsOverlay.classList.remove("open"));
+  settingsOverlay.addEventListener("click", (e)=>{
+    if(e.target === settingsOverlay) settingsOverlay.classList.remove("open");
+  });
+
+  saveSettingsBtn.addEventListener("click", ()=>{
+    settings = {
+      filamentCostPerKg: parseFloat(rateFilament.value) || 0,
+      printerWatts: parseFloat(ratePower.value) || 0,
+      electricityRate: parseFloat(rateElectricity.value) || 0,
+      labourRate: parseFloat(rateLabour.value) || 0,
+      packagingCost: parseFloat(ratePackaging.value) || 0,
+      profitPercent: parseFloat(rateProfit.value) || 0
+    };
+    saveSettings(settings);
+    settingsHint.classList.add("show");
+    setTimeout(()=> settingsHint.classList.remove("show"), 1800);
+    renderPrice();
+  });
+
+  // ---------- Coupon manager ----------
+  secretTrigger.addEventListener("click", ()=>{
+    couponManager.classList.toggle("open");
+    if(couponManager.classList.contains("open")) renderCouponList();
+  });
+
+  function renderCouponList(){
+    if(coupons.length === 0){
+      couponList.innerHTML = `<div class="settings-note" style="margin-bottom:0;">No coupons yet.</div>`;
+      return;
+    }
+    couponList.innerHTML = coupons.map((c,i)=> `
+      <div class="coupon-row" data-idx="${i}">
+        <span><span class="ccode">${escapeHtml(c.code.toUpperCase())}</span><span class="cpct">${c.percent}% off</span></span>
+        <button class="coupon-row-del" aria-label="Delete coupon" data-idx="${i}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+        </button>
+      </div>`).join("");
+
+    couponList.querySelectorAll(".coupon-row-del").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const idx = parseInt(btn.getAttribute("data-idx"), 10);
+        coupons.splice(idx, 1);
+        saveCoupons(coupons);
+        renderCouponList();
+        renderPrice();
+      });
+    });
+  }
+
+  addCouponBtn.addEventListener("click", ()=>{
+    const code = newCouponCode.value.trim();
+    const pct = parseFloat(newCouponPercent.value);
+    if(!code || isNaN(pct) || pct <= 0){
+      showToast("Enter a code and a discount %");
+      return;
+    }
+    const existingIdx = coupons.findIndex(c=> c.code.toUpperCase() === code.toUpperCase());
+    if(existingIdx !== -1){
+      coupons[existingIdx] = { code: code.toUpperCase(), percent: pct };
+    }else{
+      coupons.push({ code: code.toUpperCase(), percent: pct });
+    }
+    saveCoupons(coupons);
+    newCouponCode.value = "";
+    newCouponPercent.value = "";
+    renderCouponList();
+    showToast("Coupon saved");
+    renderPrice();
+  });
+
+  connectSyncBtn.addEventListener("click", ()=>{
+    connectSync(syncCodeInput.value);
+  });
+
+  disconnectSyncBtn.addEventListener("click", ()=>{
+    disconnectSync();
+  });
+
+  updateSyncUI();
+  setSyncStatus("idle");
+  if(syncCode){
+    connectSync(syncCode);
+  }
+
+  // ---------- Log sheet ----------
+  let activeFilter = "all";
+  let searchQuery = "";
+  let expandedId = null;
+
+  function computeStats(entries){
+    const revenue = entries.reduce((s,e)=> s + (e.total||0), 0);
+    const totalWeight = entries.reduce((s,e)=> s + (e.weight||0), 0);
+    const totalFilamentCost = entries.reduce((s,e)=> s + (e.filamentCost||0), 0);
+    const totalPowerCost = entries.reduce((s,e)=> s + (e.powerCost||0), 0);
+    const totalLabourCost = entries.reduce((s,e)=> s + (e.labourCost||0), 0);
+    const totalPackagingCost = entries.reduce((s,e)=> s + (e.packagingCost||0), 0);
+    const totalExpenses = totalFilamentCost + totalPowerCost + totalLabourCost + totalPackagingCost;
+    const totalProfit = revenue - totalExpenses;
+    const profitPct = revenue > 0 ? (totalProfit / revenue * 100) : 0;
+    return { revenue, totalWeight, totalLabourCost, totalProfit, profitPct };
+  }
+
+  function getFilteredLog(){
+    let entries = log;
+
+    if(activeFilter === "paid") entries = entries.filter(e=> !!e.paid);
+    else if(activeFilter === "unpaid") entries = entries.filter(e=> !e.paid);
+    else if(activeFilter === "done") entries = entries.filter(e=> !!e.printDone);
+    else if(activeFilter === "pending") entries = entries.filter(e=> !e.printDone);
+
+    if(searchQuery.trim()){
+      const q = searchQuery.trim().toLowerCase();
+      entries = entries.filter(e=>
+        (e.product||"").toLowerCase().includes(q) ||
+        (e.customer||"").toLowerCase().includes(q)
+      );
+    }
+
+    return entries;
+  }
+
+  function renderLog(){
+    const filtered = getFilteredLog();
+    const stats = computeStats(log); // stats strip always reflects everything, not just filtered view
+
+    statCount.textContent = log.length;
+    statRevenue.textContent = inr(stats.revenue);
+    statFilament.textContent = (stats.totalWeight >= 1000 ? (stats.totalWeight/1000).toFixed(2)+"kg" : Math.round(stats.totalWeight)+"g");
+    statProfit.textContent = inr(stats.totalProfit);
+    statProfit.classList.toggle("negative", stats.totalProfit < 0);
+    statProfitPct.textContent = stats.profitPct.toFixed(1) + "%";
+    statProfitPct.classList.toggle("negative", stats.profitPct < 0);
+    statLabour.textContent = inr(stats.totalLabourCost);
+
+    if(log.length === 0){
+      logList.innerHTML = `
+        <div class="log-empty">
+          <div class="glyph">···</div>
+          <div class="msg">Nothing logged yet.<br>Sales you log show up here.</div>
+        </div>`;
+      return;
+    }
+
+    if(filtered.length === 0){
+      logList.innerHTML = `
+        <div class="log-empty">
+          <div class="glyph">···</div>
+          <div class="msg">No prints match this filter or search.</div>
+        </div>`;
+      return;
+    }
+
+    logList.innerHTML = filtered.map(e=>{
+      const d = new Date(e.date);
+      const dateStr = isNaN(d) ? "" : d.toLocaleDateString("en-IN", {day:"2-digit", month:"short"});
+
+      const rowExpenses = (e.filamentCost||0) + (e.powerCost||0) + (e.labourCost||0) + (e.packagingCost||0);
+      const rowProfit = (e.total||0) - rowExpenses;
+      const rowProfitPct = rowExpenses > 0 ? (rowProfit / rowExpenses * 100) : 0;
+      const isFreebie = e.type === "Freebie";
+      const isExpanded = e.id === expandedId;
+
+      const metaParts = [];
+      if(e.customer) metaParts.push(e.customer);
+      if(dateStr) metaParts.push(dateStr);
+      if(e.weight) metaParts.push(e.weight+"g");
+      if(e.time) metaParts.push(e.time+"h");
+      if(!isFreebie) metaParts.push((rowProfit>=0?"+":"−")+inr(Math.abs(rowProfit))+" profit");
+
+      return `
+        <div class="log-card ${isFreebie ? "freebie" : "sold"} ${isExpanded ? "expanded" : ""}" data-id="${e.id}">
+          <button class="log-row" data-id="${e.id}">
+            <div class="log-row-main">
+              <div class="log-row-product">${escapeHtml(e.product || "Untitled")}</div>
+              <div class="log-row-meta">${escapeHtml(metaParts.join(" · "))}</div>
+            </div>
+            <div class="log-row-right">
+              <span class="log-row-price">${inr(e.total)}</span>
+            </div>
+          </button>
+          <div class="log-detail">
+            <div class="log-detail-inner">
+              <div class="log-detail-header">
+                <span class="log-detail-label">Print details</span>
+                <button class="log-detail-close" aria-label="Close" data-id="${e.id}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+              <div class="log-detail-grid">
+                <div class="log-detail-item price-edit-tile" data-id="${e.id}">
+                  <div class="dlabel">Sold price (double-tap to edit)</div>
+                  <div class="dvalue price-display-mode" data-id="${e.id}">${inr(e.total)}</div>
+                  <div class="price-edit-mode" data-id="${e.id}" style="display:none;">
+                    <span class="edit-price-currency">₹</span>
+                    <input type="number" class="edit-price-input" data-id="${e.id}" value="${e.total}" inputmode="decimal" min="0" step="1">
+                  </div>
+                </div>
+                <div class="log-detail-item"><div class="dlabel">Filament</div><div class="dvalue">${e.weight||0}g</div></div>
+                <div class="log-detail-item"><div class="dlabel">Print time</div><div class="dvalue">${e.time||0}h</div></div>
+                <div class="log-detail-item"><div class="dlabel">Filament cost</div><div class="dvalue">${inr(e.filamentCost||0)}</div></div>
+                <div class="log-detail-item"><div class="dlabel">Power cost</div><div class="dvalue">${inr(e.powerCost||0)}</div></div>
+                <div class="log-detail-item"><div class="dlabel">Labour cost</div><div class="dvalue">${inr(e.labourCost||0)}</div></div>
+                <div class="log-detail-item"><div class="dlabel">Packaging</div><div class="dvalue">${inr(e.packagingCost||0)}</div></div>
+                ${e.couponCode ? `<div class="log-detail-item"><div class="dlabel">Coupon</div><div class="dvalue">${escapeHtml(e.couponCode)} (${e.couponPercent}%)</div></div>` : ""}
+                <div class="log-detail-item"><div class="dlabel">Profit</div><div class="dvalue ${rowProfit<0?"negative":"positive"}">${inr(rowProfit)}</div></div>
+                ${!isFreebie ? `<div class="log-detail-item"><div class="dlabel">Profit %</div><div class="dvalue ${rowProfitPct<0?"negative":"positive"}">${rowProfitPct>=0?"+":""}${rowProfitPct.toFixed(0)}%</div></div>` : ""}
+              </div>
+              <div class="toggle-row" style="margin-top:12px; margin-bottom:0;">
+                <div class="toggle-item">
+                  <span class="toggle-label">Paid</span>
+                  <button class="switch on-success toggle-paid" data-id="${e.id}" role="switch" aria-checked="${e.paid ? "true" : "false"}"><span class="switch-knob"></span></button>
+                </div>
+                <div class="toggle-item">
+                  <span class="toggle-label">Print done</span>
+                  <button class="switch on-success toggle-done" data-id="${e.id}" role="switch" aria-checked="${e.printDone ? "true" : "false"}"><span class="switch-knob"></span></button>
+                </div>
+                <div class="toggle-item">
+                  <span class="toggle-label">Freebie</span>
+                  <button class="switch on-danger toggle-freebie" data-id="${e.id}" role="switch" aria-checked="${isFreebie ? "true" : "false"}"><span class="switch-knob"></span></button>
+                </div>
+              </div>
+              <button class="pill-btn log-detail-del" data-id="${e.id}" style="margin-top:14px; color: var(--danger); border-color: var(--panel-line);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+                Delete entry
+              </button>
+            </div>
+          </div>
+        </div>`;
+    }).join("");
+
+    logList.querySelectorAll(".log-row").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const id = btn.getAttribute("data-id");
+        expandedId = (expandedId === id) ? null : id;
+        renderLog();
+      });
+    });
+
+    logList.querySelectorAll(".log-detail-close").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        expandedId = null;
+        renderLog();
+      });
+    });
+
+    logList.querySelectorAll(".log-detail-del").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        const id = btn.getAttribute("data-id");
+        log = log.filter(x=> x.id !== id);
+        saveLog(log);
+        expandedId = null;
+        renderLog();
+      });
+    });
+
+    logList.querySelectorAll(".price-edit-tile").forEach(tile=>{
+      const id = tile.getAttribute("data-id");
+      const displayEl = tile.querySelector(".price-display-mode");
+      const editEl = tile.querySelector(".price-edit-mode");
+      const input = tile.querySelector(".edit-price-input");
+
+      const enterEditMode = ()=>{
+        displayEl.style.display = "none";
+        editEl.style.display = "block";
+        input.value = Math.round(parseFloat(input.value) || 0);
+        input.focus();
+        input.select();
+      };
+
+      const exitEditMode = ()=>{
+        const entry = log.find(x=> x.id === id);
+        if(!entry) return;
+        const v = parseFloat(input.value);
+        if(!isNaN(v) && v >= 0 && v !== entry.total){
+          entry.total = v;
+          saveLog(log);
+          renderLog();
+        }else{
+          displayEl.style.display = "block";
+          editEl.style.display = "none";
+        }
+      };
+
+      tile.addEventListener("dblclick", (e)=>{
+        e.stopPropagation();
+        enterEditMode();
+      });
+      // also support double-tap on touch devices where dblclick may not fire reliably
+      let lastTap = 0;
+      tile.addEventListener("touchend", (e)=>{
+        const now = Date.now();
+        if(now - lastTap < 350){
+          e.stopPropagation();
+          enterEditMode();
+        }
+        lastTap = now;
+      });
+
+      input.addEventListener("click", (e)=> e.stopPropagation());
+      input.addEventListener("blur", exitEditMode);
+      input.addEventListener("keydown", (e)=>{
+        if(e.key === "Enter"){ input.blur(); }
+      });
+    });
+
+    logList.querySelectorAll(".toggle-paid").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        const id = btn.getAttribute("data-id");
+        const entry = log.find(x=> x.id === id);
+        if(entry){
+          entry.paid = !entry.paid;
+          saveLog(log);
+          renderLog();
+        }
+      });
+    });
+
+    logList.querySelectorAll(".toggle-done").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        const id = btn.getAttribute("data-id");
+        const entry = log.find(x=> x.id === id);
+        if(entry){
+          entry.printDone = !entry.printDone;
+          saveLog(log);
+          renderLog();
+        }
+      });
+    });
+
+    logList.querySelectorAll(".toggle-freebie").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        const id = btn.getAttribute("data-id");
+        const entry = log.find(x=> x.id === id);
+        if(entry){
+          entry.type = (entry.type === "Freebie") ? "Sale" : "Freebie";
+          saveLog(log);
+          renderLog();
+        }
+      });
+    });
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+  }
+
+  logBtn.addEventListener("click", ()=>{
+    renderLog();
+    logOverlay.classList.add("open");
+  });
+  closeLog.addEventListener("click", ()=> logOverlay.classList.remove("open"));
+  logOverlay.addEventListener("click", (e)=>{
+    if(e.target === logOverlay) logOverlay.classList.remove("open");
+  });
+
+  searchInput.addEventListener("input", ()=>{
+    searchQuery = searchInput.value;
+    renderLog();
+  });
+
+  filterRow.querySelectorAll(".filter-chip").forEach(chip=>{
+    chip.addEventListener("click", ()=>{
+      activeFilter = chip.getAttribute("data-filter");
+      filterRow.querySelectorAll(".filter-chip").forEach(c=> c.classList.toggle("active", c === chip));
+      renderLog();
+    });
+  });
+
+  // ---------- Bill generator ----------
+  let billSelectedIds = new Set();
+  let billSearchQuery = "";
+
+  function showBillPickerState(){
+    billPickerView.style.display = "";
+    billResultView.style.display = "none";
+    billFooterBar.style.display = "";
+    generateBillBtn.style.display = "";
+    billResultActions.style.display = "none";
+    billScrollArea.scrollTop = 0;
+  }
+
+  function showBillResultState(){
+    billPickerView.style.display = "none";
+    billResultView.style.display = "";
+    billFooterBar.style.display = "none";
+    generateBillBtn.style.display = "none";
+    billResultActions.style.display = "";
+    billScrollArea.scrollTop = 0;
+  }
+
+  function openBillSheet(){
+    billSelectedIds = new Set();
+    billCustomerName.value = "";
+    billCouponInput.value = "";
+    billSearchInput.value = "";
+    billSearchQuery = "";
+    showBillPickerState();
+    renderBillItemList();
+    billOverlay.classList.add("open");
+  }
+
+  billBtn.addEventListener("click", openBillSheet);
+  closeBill.addEventListener("click", ()=> billOverlay.classList.remove("open"));
+  billOverlay.addEventListener("click", (e)=>{
+    if(e.target === billOverlay) billOverlay.classList.remove("open");
+  });
+
+  billSearchInput.addEventListener("input", ()=>{
+    billSearchQuery = billSearchInput.value;
+    renderBillItemList();
+  });
+
+  billCouponInput.addEventListener("input", updateBillFooter);
+
+  function getBillCandidates(){
+    let entries = log.filter(e=> e.type !== "Freebie" && (e.total||0) > 0);
+    if(billSearchQuery.trim()){
+      const q = billSearchQuery.trim().toLowerCase();
+      entries = entries.filter(e=>
+        (e.product||"").toLowerCase().includes(q) ||
+        (e.customer||"").toLowerCase().includes(q)
+      );
+    }
+    return entries;
+  }
+
+  function renderBillItemList(){
+    const entries = getBillCandidates();
+
+    if(entries.length === 0){
+      billItemList.innerHTML = `
+        <div class="log-empty">
+          <div class="glyph">···</div>
+          <div class="msg">No matching prints. Sales you've logged (not freebies) show up here.</div>
+        </div>`;
+      updateBillFooter();
+      return;
+    }
+
+    billItemList.innerHTML = entries.map(e=>{
+      const isChecked = billSelectedIds.has(e.id);
+      const d = new Date(e.date);
+      const dateStr = isNaN(d) ? "" : d.toLocaleDateString("en-IN", {day:"2-digit", month:"short"});
+      const metaParts = [];
+      if(e.customer) metaParts.push(e.customer);
+      if(dateStr) metaParts.push(dateStr);
+      return `
+        <button class="bill-item-row ${isChecked ? "checked" : ""}" data-id="${e.id}">
+          <span class="bill-checkbox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </span>
+          <span class="bill-item-main">
+            <div class="bill-item-product">${escapeHtml(e.product || "Untitled")}</div>
+            <div class="bill-item-meta">${escapeHtml(metaParts.join(" · "))}</div>
+          </span>
+          <span class="bill-item-price">${inr(e.total)}</span>
+        </button>`;
+    }).join("");
+
+    billItemList.querySelectorAll(".bill-item-row").forEach(row=>{
+      row.addEventListener("click", ()=>{
+        const id = row.getAttribute("data-id");
+        if(billSelectedIds.has(id)) billSelectedIds.delete(id);
+        else billSelectedIds.add(id);
+        row.classList.toggle("checked");
+        updateBillFooter();
+      });
+    });
+
+    updateBillFooter();
+  }
+
+  function getBillSelection(){
+    return log.filter(e=> billSelectedIds.has(e.id));
+  }
+
+  function computeBillTotals(){
+    const items = getBillSelection();
+    const subtotal = items.reduce((s,e)=> s + (e.total||0), 0);
+    const coupon = findCoupon(billCouponInput.value);
+    const discount = coupon ? subtotal * (coupon.percent/100) : 0;
+    const grandTotal = subtotal - discount;
+    return { items, subtotal, coupon, discount, grandTotal };
+  }
+
+  function updateBillFooter(){
+    const { items, grandTotal } = computeBillTotals();
+    billSelectedCount.textContent = `${items.length} selected`;
+    billSelectedTotal.textContent = inr(grandTotal);
+
+    const rawCode = billCouponInput.value.trim();
+    const coupon = findCoupon(rawCode);
+    if(!rawCode){
+      billCouponStatus.textContent = "";
+      billCouponStatus.className = "coupon-status";
+    }else if(coupon){
+      billCouponStatus.textContent = `${coupon.code.toUpperCase()} applied — ${coupon.percent}% off`;
+      billCouponStatus.className = "coupon-status applied";
+    }else{
+      billCouponStatus.textContent = "Coupon not recognised";
+      billCouponStatus.className = "coupon-status invalid";
+    }
+
+    generateBillBtn.disabled = items.length === 0;
+  }
+
+  // ---------- Bill image rendering ----------
+  // Polyfill for CanvasRenderingContext2D.roundRect on older WebViews
+  if(!CanvasRenderingContext2D.prototype.roundRect){
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r){
+      if(typeof r === "number") r = {tl:r, tr:r, br:r, bl:r};
+      this.beginPath();
+      this.moveTo(x + r.tl, y);
+      this.lineTo(x + w - r.tr, y);
+      this.arcTo(x + w, y, x + w, y + r.tr, r.tr);
+      this.lineTo(x + w, y + h - r.br);
+      this.arcTo(x + w, y + h, x + w - r.br, y + h, r.br);
+      this.lineTo(x + r.bl, y + h);
+      this.arcTo(x, y + h, x, y + h - r.bl, r.bl);
+      this.lineTo(x, y + r.tl);
+      this.arcTo(x, y, x + r.tl, y, r.tl);
+      this.closePath();
+      return this;
+    };
+  }
+
+  function wrapCanvasText(ctx, text, maxWidth){
+    const words = text.split(" ");
+    const lines = [];
+    let cur = "";
+    for(const w of words){
+      const test = cur ? cur + " " + w : w;
+      if(ctx.measureText(test).width > maxWidth && cur){
+        lines.push(cur);
+        cur = w;
+      }else{
+        cur = test;
+      }
+    }
+    if(cur) lines.push(cur);
+    return lines;
+  }
+
+  function renderBillImage(){
+    const { items, subtotal, coupon, discount, grandTotal } = computeBillTotals();
+    const customer = billCustomerName.value.trim();
+
+    const W = 720;
+    const padX = 40;
+    const rowH = 56;
+    const headerH = customer ? 230 : 160;
+    const summaryH = coupon ? 190 : 140;
+    const noteH = 90;
+    const footerH = 50;
+    const H = headerH + (items.length * rowH) + 40 + summaryH + noteH + footerH;
+
+    billCanvas.width = W;
+    billCanvas.height = H;
+    const ctx = billCanvas.getContext("2d");
+
+    // background
+    ctx.fillStyle = "#0A0A0B";
+    ctx.fillRect(0, 0, W, H);
+
+    let y = 44;
+
+    // brand
+    ctx.fillStyle = "#6E6E73";
+    ctx.font = "600 11px 'JetBrains Mono', monospace";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText("THE PRINT VAULT", padX, y);
+    y += 26;
+
+    ctx.fillStyle = "#F5F5F2";
+    ctx.font = "800 26px 'JetBrains Mono', monospace";
+    ctx.fillText("Order Bill", padX, y);
+    y += 20;
+
+    ctx.strokeStyle = "#2A2A2E";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padX, y);
+    ctx.lineTo(W - padX, y);
+    ctx.stroke();
+    y += 30;
+
+    if(customer){
+      ctx.fillStyle = "#6E6E73";
+      ctx.font = "600 10px 'JetBrains Mono', monospace";
+      ctx.fillText("BILLED TO", padX, y);
+      y += 22;
+      ctx.fillStyle = "#F5F5F2";
+      ctx.font = "700 18px Inter, sans-serif";
+      ctx.fillText(customer, padX, y);
+      y += 74;
+    }
+
+    // item rows
+    for(const item of items){
+      ctx.fillStyle = "#1D1D20";
+      ctx.beginPath();
+      ctx.roundRect(padX, y - 32, W - padX*2, 46, 10);
+      ctx.fill();
+
+      ctx.fillStyle = "#F5F5F2";
+      ctx.font = "600 14.5px Inter, sans-serif";
+      const name = item.product || "Untitled";
+      const truncated = ctx.measureText(name).width > 380 ? name.slice(0, 34) + "…" : name;
+      ctx.fillText(truncated, padX + 16, y - 6);
+
+      ctx.fillStyle = "#F5F5F2";
+      ctx.font = "700 15px 'JetBrains Mono', monospace";
+      const priceText = inr(item.total);
+      const priceWidth = ctx.measureText(priceText).width;
+      ctx.fillText(priceText, W - padX - 16 - priceWidth, y - 6);
+
+      y += rowH;
+    }
+
+    y += 26;
+    ctx.strokeStyle = "#2A2A2E";
+    ctx.beginPath();
+    ctx.moveTo(padX, y);
+    ctx.lineTo(W - padX, y);
+    ctx.stroke();
+    y += 42;
+
+    // subtotal
+    ctx.fillStyle = "#9A9A9E";
+    ctx.font = "500 13px Inter, sans-serif";
+    ctx.fillText("Subtotal", padX, y);
+    ctx.font = "600 13px 'JetBrains Mono', monospace";
+    const subText = inr(subtotal);
+    ctx.fillText(subText, W - padX - ctx.measureText(subText).width, y);
+    y += 36;
+
+    if(coupon){
+      ctx.fillStyle = "#7FB88A";
+      ctx.font = "500 13px Inter, sans-serif";
+      ctx.fillText(`Coupon ${coupon.code.toUpperCase()} (${coupon.percent}% off)`, padX, y);
+      ctx.font = "600 13px 'JetBrains Mono', monospace";
+      const discText = "−" + inr(discount);
+      ctx.fillText(discText, W - padX - ctx.measureText(discText).width, y);
+      y += 44;
+    }else{
+      y += 14;
+    }
+
+    // grand total
+    ctx.fillStyle = "#1D1D20";
+    ctx.beginPath();
+    ctx.roundRect(padX, y - 26, W - padX*2, 52, 12);
+    ctx.fill();
+
+    ctx.fillStyle = "#F5F5F2";
+    ctx.font = "700 15px 'JetBrains Mono', monospace";
+    ctx.fillText("TOTAL", padX + 18, y + 4);
+
+    ctx.font = "800 24px 'JetBrains Mono', monospace";
+    const totalText = "₹" + Number(grandTotal).toLocaleString("en-IN", {maximumFractionDigits: 2});
+    ctx.fillText(totalText, W - padX - 18 - ctx.measureText(totalText).width, y + 6);
+    y += 56;
+
+    // payment note
+    ctx.fillStyle = "#232326";
+    ctx.beginPath();
+    ctx.roundRect(padX, y, W - padX*2, noteH - 20, 12);
+    ctx.fill();
+
+    ctx.fillStyle = "#F5F5F2";
+    ctx.font = "700 14px Inter, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Pay to confirm order", W/2, y + 32);
+    ctx.fillStyle = "#9A9A9E";
+    ctx.font = "500 12px Inter, sans-serif";
+    ctx.fillText("Scan the attached QR to complete payment", W/2, y + 52);
+    ctx.textAlign = "left";
+    y += noteH;
+
+    // footer
+    ctx.fillStyle = "#4A4A4E";
+    ctx.font = "500 10.5px 'JetBrains Mono', monospace";
+    ctx.textAlign = "center";
+    const dateStr = new Date().toLocaleDateString("en-IN", {day:"2-digit", month:"short", year:"numeric"});
+    ctx.fillText(`Generated ${dateStr}`, W/2, H - 20);
+    ctx.textAlign = "left";
+
+    return billCanvas.toDataURL("image/png");
+  }
+
+  generateBillBtn.addEventListener("click", ()=>{
+    const { items } = computeBillTotals();
+    if(items.length === 0){
+      showToast("Select at least one print");
+      return;
+    }
+    const dataUrl = renderBillImage();
+    billPreviewImg.src = dataUrl;
+    showBillResultState();
+  });
+
+  backToBillPicker.addEventListener("click", ()=>{
+    showBillPickerState();
+  });
+
+  downloadBillBtn.addEventListener("click", ()=>{
+    const link = document.createElement("a");
+    const custPart = billCustomerName.value.trim() ? "-" + billCustomerName.value.trim().replace(/[^a-z0-9]+/gi, "-").toLowerCase() : "";
+    link.download = `bill${custPart}-${new Date().toISOString().slice(0,10)}.png`;
+    link.href = billPreviewImg.src;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Bill image downloaded");
+  });
+
+  // ---------- CSV export ----------
+  function toCsv(entries){
+    const headers = ["Date","Product","Customer","Filament(g)","Time(hrs)","FilamentCost","PowerCost","LabourCost","PackagingCost","ProfitCost","Total"];
+    const rows = entries.map(e=>[
+      e.date, e.product, e.customer, e.weight, e.time,
+      round2(e.filamentCost), round2(e.powerCost), round2(e.labourCost), round2(e.packagingCost||0), round2(e.profitCost), round2(e.total)
+    ]);
+    const escape = v => {
+      const s = String(v ?? "");
+      if(s.includes(",") || s.includes('"') || s.includes("\n")){
+        return '"' + s.replace(/"/g,'""') + '"';
+      }
+      return s;
+    };
+    return [headers, ...rows].map(r=> r.map(escape).join(",")).join("\n");
+  }
+  function round2(n){ return Math.round((n + Number.EPSILON) * 100) / 100; }
+
+  exportBtn.addEventListener("click", ()=>{
+    if(log.length === 0){ showToast("Nothing to export yet"); return; }
+    const csv = toCsv(log);
+    const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "print-ledger-" + new Date().toISOString().slice(0,10) + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("CSV exported");
+  });
+
+  // ---------- Init ----------
+  renderPrice();
+  renderLog();
+
+})();
+</script>
+</body>
+</html>
