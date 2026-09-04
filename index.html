@@ -7,13 +7,34 @@
 <title>Print Ledger — Pricer</title>
 <meta name="description" content="Price your 3D prints. Track what you've sold.">
 
+<script>
+(function(){
+  try{
+    var THEME_BG = { obsidian:"#0A0A0B", aurora:"#0B0B16", sunset:"#150F0A", ocean:"#08121A", paper:"#F6F5F1" };
+    var t = localStorage.getItem("printLedger_theme_v1") || "obsidian";
+    if(!THEME_BG[t]) t = "obsidian";
+    document.documentElement.setAttribute("data-theme", t);
+    var mc = document.querySelector('meta[name="theme-color"]');
+    if(mc) mc.setAttribute("content", THEME_BG[t]);
+  }catch(e){}
+})();
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
   :root{
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --sans: 'Inter', system-ui, sans-serif;
+
+  }
+
+  /* ---------- Themes ---------- */
+  :root, [data-theme="obsidian"]{
     --bg: #0A0A0B;
+    --bg-glow: radial-gradient(120% 55% at 50% -10%, rgba(240,217,166,0.07), transparent 60%);
     --panel: #141416;
     --panel-raised: #1D1D20;
     --panel-line: #2A2A2E;
@@ -23,20 +44,128 @@
     --muted-dim: #4A4A4E;
     --danger: #E85A4C;
     --success: #7FB88A;
-
-    --mono: 'JetBrains Mono', ui-monospace, monospace;
-    --sans: 'Inter', system-ui, sans-serif;
-
-    --seg-filament: #F5F5F2;
-    --seg-power: #A8A8A2;
-    --seg-labour: #7A7A76;
-    --seg-profit: #4E4E4A;
+    --accent: #F0D9A6;
+    --accent-2: #D8A857;
+    --accent-ink: #17130A;
+    --accent-glow: rgba(216,168,87,0.35);
+    --danger-glow: rgba(232,90,76,0.35);
+    --danger-wash: rgba(232,90,76,0.1);
+    --success-glow: rgba(127,184,138,0.35);
+    --hover-wash: rgba(255,255,255,0.03);
+    --glass: rgba(20,20,22,0.82);
+    --shadow-elev: 0 24px 48px -24px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.04) inset;
+    --shadow-tight: 0 10px 24px -14px rgba(0,0,0,0.55);
   }
 
-  *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  [data-theme="aurora"]{
+    --bg: #0B0B16;
+    --bg-glow: radial-gradient(120% 55% at 50% -10%, rgba(139,124,246,0.16), transparent 60%);
+    --panel: #15141F;
+    --panel-raised: #1E1D2E;
+    --panel-line: #2E2C42;
+    --white: #F1EEFB;
+    --white-dim: #CBC5E8;
+    --muted: #8681A6;
+    --muted-dim: #524C72;
+    --danger: #F2607A;
+    --success: #5FE0B0;
+    --accent: #8B7CF6;
+    --accent-2: #4FD1C5;
+    --accent-ink: #0B0B16;
+    --accent-glow: rgba(139,124,246,0.4);
+    --danger-glow: rgba(242,96,122,0.35);
+    --danger-wash: rgba(242,96,122,0.12);
+    --success-glow: rgba(95,224,176,0.35);
+    --hover-wash: rgba(255,255,255,0.035);
+    --glass: rgba(24,23,36,0.84);
+    --shadow-elev: 0 24px 48px -24px rgba(0,0,0,0.65), 0 1px 0 rgba(255,255,255,0.04) inset;
+    --shadow-tight: 0 10px 24px -14px rgba(0,0,0,0.6);
+  }
+
+  [data-theme="sunset"]{
+    --bg: #150F0A;
+    --bg-glow: radial-gradient(120% 55% at 50% -10%, rgba(255,122,89,0.18), transparent 60%);
+    --panel: #1F1712;
+    --panel-raised: #2B2019;
+    --panel-line: #3D2E22;
+    --white: #FBF1E8;
+    --white-dim: #E3C7AF;
+    --muted: #A38268;
+    --muted-dim: #6B5240;
+    --danger: #F2564A;
+    --success: #B7C67D;
+    --accent: #FF9A56;
+    --accent-2: #FF5E7E;
+    --accent-ink: #180D08;
+    --accent-glow: rgba(255,122,110,0.4);
+    --danger-glow: rgba(242,86,74,0.35);
+    --danger-wash: rgba(242,86,74,0.12);
+    --success-glow: rgba(183,198,125,0.35);
+    --hover-wash: rgba(255,255,255,0.035);
+    --glass: rgba(36,26,20,0.84);
+    --shadow-elev: 0 24px 48px -24px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.03) inset;
+    --shadow-tight: 0 10px 24px -14px rgba(0,0,0,0.55);
+  }
+
+  [data-theme="ocean"]{
+    --bg: #08121A;
+    --bg-glow: radial-gradient(120% 55% at 50% -10%, rgba(51,199,242,0.16), transparent 60%);
+    --panel: #0F1E29;
+    --panel-raised: #152A38;
+    --panel-line: #1F3B4D;
+    --white: #EAF6FB;
+    --white-dim: #B9DCE8;
+    --muted: #5F8A9C;
+    --muted-dim: #3A5A69;
+    --danger: #FF6B6B;
+    --success: #5FE0C0;
+    --accent: #33C7F2;
+    --accent-2: #3D7EF7;
+    --accent-ink: #04121A;
+    --accent-glow: rgba(51,199,242,0.4);
+    --danger-glow: rgba(255,107,107,0.35);
+    --danger-wash: rgba(255,107,107,0.12);
+    --success-glow: rgba(95,224,192,0.35);
+    --hover-wash: rgba(255,255,255,0.035);
+    --glass: rgba(18,38,50,0.84);
+    --shadow-elev: 0 24px 48px -24px rgba(0,0,0,0.65), 0 1px 0 rgba(255,255,255,0.04) inset;
+    --shadow-tight: 0 10px 24px -14px rgba(0,0,0,0.6);
+  }
+
+  [data-theme="paper"]{
+    --bg: #F6F5F1;
+    --bg-glow: radial-gradient(120% 55% at 50% -10%, rgba(38,87,214,0.08), transparent 60%);
+    --panel: #FFFFFF;
+    --panel-raised: #F1EFE9;
+    --panel-line: #E2DFD5;
+    --white: #1A1A18;
+    --white-dim: #4A4944;
+    --muted: #8C887E;
+    --muted-dim: #B7B3A8;
+    --danger: #C0392B;
+    --success: #2E7D4F;
+    --accent: #2657D6;
+    --accent-2: #7A3FF2;
+    --accent-ink: #FFFFFF;
+    --accent-glow: rgba(38,87,214,0.22);
+    --danger-glow: rgba(192,57,43,0.22);
+    --danger-wash: rgba(192,57,43,0.1);
+    --success-glow: rgba(46,125,79,0.22);
+    --hover-wash: rgba(20,18,10,0.035);
+    --glass: rgba(255,255,255,0.86);
+    --shadow-elev: 0 24px 48px -28px rgba(30,25,15,0.18), 0 1px 0 rgba(255,255,255,0.6) inset;
+    --shadow-tight: 0 10px 24px -16px rgba(30,25,15,0.14);
+  }
+
+  *{
+    margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent;
+    transition: background-color .3s ease, border-color .3s ease, color .3s ease;
+  }
 
   html, body{
-    background: var(--bg);
+    background-color: var(--bg);
+    background-image: var(--bg-glow);
+    background-attachment: fixed;
     color: var(--white);
     font-family: var(--sans);
     height: 100%;
@@ -49,40 +178,92 @@
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 
-  ::selection{ background: var(--white); color: var(--bg); }
+  ::selection{ background: var(--accent); color: var(--accent-ink); }
 
   button{ font-family: inherit; cursor: pointer; }
   input{ font-family: inherit; }
 
   :focus-visible{
-    outline: 2px solid var(--white);
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
     border-radius: 4px;
   }
+
+  /* thin themed scrollbars */
+  .sheet::-webkit-scrollbar, .bill-scroll-area::-webkit-scrollbar{ width: 7px; }
+  .sheet::-webkit-scrollbar-thumb, .bill-scroll-area::-webkit-scrollbar-thumb{ background: var(--panel-line); border-radius: 999px; }
+  .sheet::-webkit-scrollbar-track, .bill-scroll-area::-webkit-scrollbar-track{ background: transparent; }
+
+  /* ---------- Motion system ---------- */
+  @keyframes fadeUp{ from{ opacity:0; transform: translateY(16px); } to{ opacity:1; transform: none; } }
+  @keyframes popIn{ 0%{ opacity:0; transform: scale(.9); } 60%{ transform: scale(1.03); } 100%{ opacity:1; transform: scale(1); } }
+  @keyframes sheenSweep{ 0%{ transform: translateX(-140%) skewX(-18deg); } 100%{ transform: translateX(520%) skewX(-18deg); } }
+  @keyframes floatY{ 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-7px); } }
+  @keyframes barGrow{ from{ transform: scaleY(0); } to{ transform: scaleY(1); } }
+  @keyframes rippleOut{ to{ transform: scale(2.8); opacity: 0; } }
+  @keyframes bumpPop{ 0%{ transform: scale(1); } 40%{ transform: scale(1.035); } 100%{ transform: scale(1); } }
+  @keyframes drawCheck{ from{ stroke-dashoffset: 26; } to{ stroke-dashoffset: 0; } }
+
+  .stagger > *{ animation: fadeUp .55s cubic-bezier(.22,1,.36,1) backwards; }
+  .stagger > *:nth-child(1){ animation-delay: .02s; }
+  .stagger > *:nth-child(2){ animation-delay: .10s; }
+  .stagger > *:nth-child(3){ animation-delay: .18s; }
 
   /* ---------- Shell ---------- */
   .app{
     max-width: 640px;
     margin: 0 auto;
-    padding: 20px 20px 100px;
+    padding: 0 20px 150px;
     min-height: 100vh;
   }
 
   .topbar{
+    position: sticky;
+    top: 0;
+    z-index: 30;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 28px;
+    gap: 12px;
+    padding: 18px 0 14px;
+    margin-bottom: 18px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .topbar::before{
+    content: "";
+    position: absolute;
+    inset: 0 -20px;
+    z-index: -1;
+    background: linear-gradient(180deg, var(--bg) 55%, transparent);
   }
 
   .brand{
     display: flex;
+    align-items: center;
+    gap: 11px;
+    min-width: 0;
+  }
+  .brand-mark{
+    width: 38px; height: 38px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(140deg, var(--accent), var(--accent-2));
+    color: var(--accent-ink);
+    box-shadow: 0 8px 20px -8px var(--accent-glow);
+    animation: floatY 5s ease-in-out infinite;
+  }
+  .brand-mark svg{ width: 19px; height: 19px; }
+  .brand-text{
+    display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
+    min-width: 0;
   }
   .brand .eyebrow{
     font-family: var(--mono);
-    font-size: 10px;
+    font-size: 9.5px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--muted);
@@ -90,34 +271,88 @@
   .brand .name{
     font-family: var(--mono);
     font-weight: 700;
-    font-size: 17px;
+    font-size: 16.5px;
     letter-spacing: -0.01em;
     color: var(--white);
   }
 
-  .icon-row{ display:flex; gap: 8px; }
-  .icon-btn{
+  .theme-cycle{
     width: 40px; height: 40px;
-    display: flex; align-items:center; justify-content:center;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
     background: var(--panel);
     border: 1px solid var(--panel-line);
-    border-radius: 10px;
+    border-radius: 12px;
     color: var(--white-dim);
-    transition: border-color .15s ease, color .15s ease, background .15s ease;
     position: relative;
+    overflow: hidden;
+    transition: border-color .18s ease, color .18s ease, transform .15s ease;
   }
-  .icon-btn:hover{ border-color: var(--muted); color: var(--white); }
-  .icon-btn svg{ width: 18px; height: 18px; }
-  .icon-btn.active{ background: var(--white); color: var(--bg); border-color: var(--white); }
+  .theme-cycle:hover{ border-color: var(--accent); color: var(--white); }
+  .theme-cycle:active{ transform: scale(.92); }
+  .theme-cycle svg{ width: 17px; height: 17px; }
+  .theme-cycle.spun svg{ animation: popIn .45s cubic-bezier(.22,1,.36,1); }
+
+  /* ---------- Floating bottom dock ---------- */
+  .dock{
+    position: fixed;
+    left: 50%;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 40;
+    display: flex;
+    gap: 4px;
+    padding: 6px;
+    border-radius: 999px;
+    background: var(--glass);
+    border: 1px solid var(--panel-line);
+    box-shadow: var(--shadow-elev);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    transition: transform .4s cubic-bezier(.22,1,.36,1), opacity .3s ease;
+    animation: fadeUp .6s cubic-bezier(.22,1,.36,1) .3s backwards;
+  }
+  .dock.tucked{
+    transform: translateX(-50%) translateY(170%);
+    opacity: 0;
+  }
+  .dock-btn{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 15px;
+    border: none;
+    background: transparent;
+    border-radius: 999px;
+    color: var(--white-dim);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+    transition: color .18s ease, background .18s ease, transform .14s ease;
+  }
+  .dock-btn svg{ width: 18px; height: 18px; flex-shrink: 0; }
+  .dock-btn:hover{ color: var(--white); background: var(--hover-wash); }
+  .dock-btn:active{ transform: scale(.93); }
+  .dock-btn.primary{
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--accent-ink);
+    box-shadow: 0 8px 20px -10px var(--accent-glow);
+  }
+  .dock-label{ display: none; }
+  @media (min-width: 360px){ .dock-label{ display: inline; } }
 
   .icon-badge-dot{
     position: absolute;
-    top: -3px;
-    right: -3px;
-    width: 9px; height: 9px;
+    top: 6px;
+    right: 8px;
+    width: 8px; height: 8px;
     border-radius: 50%;
     background: var(--success);
-    border: 2px solid var(--bg);
+    border: 2px solid var(--panel);
   }
   .icon-badge-dot.syncing{
     background: #E0B84C;
@@ -127,13 +362,14 @@
 
   /* ---------- Price readout (signature element) ---------- */
   .readout{
-    background: var(--panel);
+    background: linear-gradient(165deg, var(--panel-raised), var(--panel) 65%);
     border: 1px solid var(--panel-line);
-    border-radius: 20px;
+    border-radius: 22px;
     padding: 28px 24px 22px;
     margin-bottom: 20px;
     position: relative;
     overflow: hidden;
+    box-shadow: var(--shadow-elev);
   }
 
   .readout::before{
@@ -141,7 +377,59 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 1px;
+    z-index: 1;
     background: linear-gradient(90deg, transparent, var(--panel-line) 20%, var(--panel-line) 80%, transparent);
+  }
+
+  .readout::after{
+    content: "";
+    position: absolute;
+    top: -55%; right: -15%;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+    filter: blur(6px);
+    opacity: .8;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Blueprint grid — faint engineering paper under the number */
+  .readout .grid-lines{
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: .5;
+    background-image:
+      linear-gradient(var(--panel-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--panel-line) 1px, transparent 1px);
+    background-size: 26px 26px;
+    -webkit-mask-image: radial-gradient(120% 80% at 15% 0%, #000 20%, transparent 72%);
+    mask-image: radial-gradient(120% 80% at 15% 0%, #000 20%, transparent 72%);
+  }
+
+  /* Corner registration marks */
+  .readout .corner{
+    position: absolute;
+    width: 13px; height: 13px;
+    border: 1px solid var(--muted-dim);
+    opacity: .5;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .readout .corner.tl{ top: 12px; left: 12px; border-right: 0; border-bottom: 0; border-radius: 4px 0 0 0; }
+  .readout .corner.tr{ top: 12px; right: 12px; border-left: 0; border-bottom: 0; border-radius: 0 4px 0 0; }
+  .readout .corner.bl{ bottom: 12px; left: 12px; border-right: 0; border-top: 0; border-radius: 0 0 0 4px; }
+  .readout .corner.br{ bottom: 12px; right: 12px; border-left: 0; border-top: 0; border-radius: 0 0 4px 0; }
+
+  .readout .sheen{
+    position: absolute;
+    top: -60%; left: 0;
+    width: 70px; height: 220%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
+    animation: sheenSweep 9s ease-in-out 2s infinite;
+    pointer-events: none;
+    z-index: 1;
   }
 
   .readout-label{
@@ -154,6 +442,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
   }
 
   .readout-label .part-name{
@@ -165,6 +456,61 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .readout-flags{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+    position: relative;
+    z-index: 1;
+  }
+  .readout-flags:empty{ display: none; }
+  .flag-pill{
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    animation: popIn .35s cubic-bezier(.22,1,.36,1);
+  }
+  .flag-pill.accent{ color: var(--accent); }
+  .flag-pill.success{ color: var(--success); }
+  .flag-pill.danger{ color: var(--danger); }
+
+  .readout-sub{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    margin-top: 12px;
+    position: relative;
+    z-index: 1;
+    min-height: 15px;
+  }
+  .readout-sub b{ color: var(--success); font-weight: 700; }
+
+  .readout-foot{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--panel-line);
+    position: relative;
+    z-index: 1;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted-dim);
+  }
+  .readout-foot .dash{
+    flex: 1;
+    height: 1px;
+    background: repeating-linear-gradient(90deg, var(--panel-line) 0 4px, transparent 4px 8px);
   }
 
   .price-value{
@@ -180,19 +526,26 @@
     font-variant-numeric: tabular-nums;
     user-select: none;
     -webkit-user-select: none;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 0 34px var(--accent-glow);
   }
+  .price-value.bump{ animation: bumpPop .35s cubic-bezier(.22,1,.36,1); }
+  .price-value{ transform-origin: left center; }
   .price-value .currency{
     font-size: 0.42em;
     color: var(--muted);
     font-weight: 600;
   }
-  .price-value.overridden{ color: var(--success); }
+  .price-value.overridden{ color: var(--success); text-shadow: 0 0 34px var(--success-glow); }
   .price-value.overridden .currency{ color: var(--success); opacity: 0.7; }
 
   .price-override-row{
     margin-top: 14px;
     display: flex;
     gap: 8px;
+    position: relative;
+    z-index: 1;
   }
   .price-override-row input{
     flex: 1;
@@ -204,7 +557,7 @@
     font-family: var(--mono);
     font-size: 14px;
   }
-  .price-override-row input:focus{ border-color: var(--white-dim); outline: none; }
+  .price-override-row input:focus{ border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-glow); }
   .price-override-row .pill-btn{
     flex-shrink: 0;
     width: auto;
@@ -218,6 +571,38 @@
     border: 1px solid var(--panel-line);
     border-radius: 20px;
     padding: 22px;
+    box-shadow: var(--shadow-tight);
+  }
+
+  .section-head{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .section-head .idx{
+    width: 22px; height: 22px;
+    flex-shrink: 0;
+    border-radius: 7px;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .section-head .txt{
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--white-dim);
+  }
+  .section-head .rule{
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--panel-line), transparent);
   }
 
   .field{
@@ -247,7 +632,7 @@
     transition: border-color .15s ease;
   }
   .field input::placeholder{ color: var(--muted-dim); }
-  .field input:focus{ border-color: var(--white-dim); outline: none; }
+  .field input:focus{ border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-glow); }
 
   .field.numeric input{
     font-family: var(--mono);
@@ -273,27 +658,125 @@
     pointer-events: none;
   }
 
+  /* Quick-add chips */
+  .quick-row{
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .quick-chip{
+    flex: 1;
+    background: transparent;
+    border: 1px dashed var(--panel-line);
+    color: var(--muted);
+    border-radius: 9px;
+    padding: 6px 4px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    transition: border-color .15s ease, color .15s ease, background .15s ease, transform .12s ease;
+  }
+  .quick-chip:hover{
+    border-color: var(--accent);
+    border-style: solid;
+    color: var(--white);
+    background: var(--hover-wash);
+  }
+  .quick-chip:active{ transform: scale(.94); }
+
+  /* Toggles as option cards */
+  .option-grid{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .option-card{
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    border-radius: 14px;
+    padding: 13px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+  }
+  .option-card .opt-text{ min-width: 0; }
+  .option-card .opt-title,
+  .option-card .opt-note{ display: block; }
+  .option-card .opt-title{
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--white-dim);
+    white-space: nowrap;
+  }
+  .option-card .opt-note{
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--muted);
+    margin-top: 2px;
+    white-space: nowrap;
+  }
+  .option-card.on{
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent-glow) inset;
+  }
+  .option-card.on .opt-title{ color: var(--white); }
+  .option-card.on.danger{ border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger-wash) inset; }
+  @media (max-width: 400px){
+    .option-grid{ grid-template-columns: 1fr; }
+  }
+
   .save-btn{
+    position: relative;
+    overflow: hidden;
     width: 100%;
     margin-top: 22px;
-    background: var(--white);
-    color: var(--bg);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--accent-ink);
     border: none;
-    border-radius: 12px;
-    padding: 15px;
+    border-radius: 13px;
+    padding: 16px;
     font-family: var(--mono);
     font-weight: 700;
     font-size: 13px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    transition: opacity .15s ease, transform .1s ease;
+    box-shadow: 0 12px 28px -12px var(--accent-glow);
+    transition: opacity .15s ease, transform .12s ease, box-shadow .2s ease, background .3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
   }
-  .save-btn:hover{ opacity: 0.88; }
+  .save-btn svg{ width: 16px; height: 16px; }
+  .save-btn:hover{ opacity: 0.92; transform: translateY(-1px); box-shadow: 0 16px 32px -12px var(--accent-glow); }
   .save-btn:active{ transform: scale(0.98); }
   .save-btn:disabled{
     background: var(--panel-raised);
     color: var(--muted);
     cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+  }
+  .save-btn.saved{
+    background: var(--success);
+    color: var(--bg);
+  }
+  .save-btn.saved svg path{
+    stroke-dasharray: 26;
+    animation: drawCheck .4s ease forwards;
+  }
+
+  /* Ripple */
+  .ripple{
+    position: absolute;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .28;
+    transform: scale(0);
+    pointer-events: none;
+    animation: rippleOut .6s ease-out forwards;
   }
 
   .save-hint{
@@ -352,19 +835,22 @@
     height: 20px;
     border-radius: 50%;
     background: var(--muted);
-    transition: transform .18s cubic-bezier(.4,0,.2,1), background .15s ease;
+    transition: transform .34s cubic-bezier(.34,1.56,.64,1), background .15s ease, width .15s ease;
   }
+  .switch:active .switch-knob{ width: 26px; }
   .switch[aria-checked="true"]{
-    background: var(--white);
-    border-color: var(--white);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: var(--accent);
+    box-shadow: 0 4px 14px -4px var(--accent-glow);
   }
   .switch[aria-checked="true"] .switch-knob{
-    background: var(--bg);
+    background: var(--accent-ink);
     transform: translateX(18px);
   }
   .switch.on-danger[aria-checked="true"]{
     background: var(--danger);
     border-color: var(--danger);
+    box-shadow: 0 4px 14px -4px var(--danger-glow);
   }
   .switch.on-danger[aria-checked="true"] .switch-knob{
     background: var(--white);
@@ -372,6 +858,7 @@
   .switch.on-success[aria-checked="true"]{
     background: var(--success);
     border-color: var(--success);
+    box-shadow: 0 4px 14px -4px var(--success-glow);
   }
   .switch.on-success[aria-checked="true"] .switch-knob{
     background: var(--bg);
@@ -382,7 +869,8 @@
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.6);
-    backdrop-filter: blur(3px);
+    backdrop-filter: blur(6px) saturate(1.2);
+    -webkit-backdrop-filter: blur(6px) saturate(1.2);
     display: none;
     align-items: flex-end;
     justify-content: center;
@@ -401,48 +889,76 @@
     width: 100%;
     max-width: 560px;
     max-height: 88vh;
-    overflow-y: auto;
-    padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
-    animation: slideUp .25s cubic-bezier(.32,.72,0,1);
-  }
-
-  @media (min-width: 640px){
-    .sheet{ border-radius: 20px; max-height: 80vh; }
-  }
-
-  /* Bill sheet: header fixed, item list scrolls, generate bar pinned to bottom */
-  .sheet.bill-sheet{
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding-bottom: 0;
+    padding: 8px 0 0;
+    animation: slideUp .42s cubic-bezier(.22,1,.36,1);
+    box-shadow: var(--shadow-elev);
   }
-  .sheet.bill-sheet .sheet-header{
+
+  /* Body scrolls; the header above it never moves */
+  .sheet-scroll{
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px 20px calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .sheet-handle{
+    display: flex;
+    justify-content: center;
+    padding: 8px 0 12px;
+    cursor: grab;
+    touch-action: none;
     flex-shrink: 0;
   }
+  .sheet-handle i{
+    display: block;
+    width: 40px; height: 4px;
+    border-radius: 999px;
+    background: var(--panel-line);
+    transition: background .2s ease, width .2s ease;
+  }
+  .sheet-handle:hover i{ background: var(--muted-dim); }
+  .sheet-handle:active{ cursor: grabbing; }
+  .sheet-handle:active i{ background: var(--muted); width: 54px; }
+
+  .sheet.dragging{ animation: none; transition: none; }
+  .sheet.snapping{ animation: none; transition: transform .32s cubic-bezier(.22,1,.36,1); }
+
+  @media (min-width: 640px){
+    .sheet{ border-radius: 20px; max-height: 80vh; padding-top: 16px; }
+    .sheet-handle{ display: none; }
+  }
+
+  /* Bill sheet: item list scrolls, generate bar pinned to the bottom */
   .bill-scroll-area{
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding-bottom: 16px;
+    padding: 18px 20px 16px;
   }
   .bill-sticky-footer{
     flex-shrink: 0;
     background: var(--panel);
     border-top: 1px solid var(--panel-line);
-    padding: 12px 0 calc(16px + env(safe-area-inset-bottom));
+    padding: 12px 20px calc(16px + env(safe-area-inset-bottom));
   }
 
   @keyframes slideUp{
-    from{ transform: translateY(24px); opacity: 0; }
+    from{ transform: translateY(60px); opacity: 0; }
     to{ transform: translateY(0); opacity: 1; }
   }
 
   .sheet-header{
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 18px;
+    padding: 2px 20px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--panel-line);
   }
   .sheet-title{
     font-family: var(--mono);
@@ -458,7 +974,8 @@
     background: transparent;
     border: none;
   }
-  .sheet-close:hover{ color: var(--white); background: var(--panel-raised); }
+  .sheet-close:hover{ color: var(--white); background: var(--panel-raised); transform: rotate(90deg); }
+  .sheet-close{ transition: color .15s ease, background .15s ease, transform .2s ease; }
   .sheet-close svg{ width: 16px; height: 16px; }
 
   .settings-note{
@@ -526,7 +1043,7 @@
     background: transparent;
     border: none;
   }
-  .coupon-row-del:hover{ color: var(--danger); background: rgba(232,90,76,0.1); }
+  .coupon-row-del:hover{ color: var(--danger); background: var(--danger-wash); }
   .coupon-row-del svg{ width: 13px; height: 13px; }
 
   .sync-section{
@@ -562,6 +1079,49 @@
     50%{ opacity: 0.4; }
   }
 
+  /* ---------- Appearance / theme picker ---------- */
+  .appearance-section{ margin-bottom: 22px; }
+  .theme-grid{
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .theme-grid::-webkit-scrollbar{ display: none; }
+  .theme-swatch{
+    flex: 0 0 auto;
+    width: 66px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    border-radius: 13px;
+    padding: 10px 4px 9px;
+    transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  .theme-swatch:hover{ transform: translateY(-2px); }
+  .theme-swatch.active{
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+  }
+  .theme-swatch-preview{
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: block;
+    border: 1px solid rgba(128,128,128,0.25);
+  }
+  .theme-swatch-label{
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .theme-swatch.active .theme-swatch-label{ color: var(--white); }
+
   /* ---------- Log / Spreadsheet sheet ---------- */
   .log-toolbar{
     display: flex;
@@ -585,7 +1145,7 @@
     gap: 6px;
     transition: border-color .15s ease, color .15s ease;
   }
-  .pill-btn:hover{ border-color: var(--muted); color: var(--white); }
+  .pill-btn:hover{ border-color: var(--accent); color: var(--white); }
   .pill-btn svg{ width: 14px; height: 14px; }
 
   .search-wrap{
@@ -612,7 +1172,7 @@
     font-family: var(--sans);
   }
   .search-wrap input::placeholder{ color: var(--muted-dim); }
-  .search-wrap input:focus{ border-color: var(--white-dim); outline: none; }
+  .search-wrap input:focus{ border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-glow); }
 
   .filter-row{
     display: flex;
@@ -623,6 +1183,16 @@
     padding-bottom: 2px;
   }
   .filter-row::-webkit-scrollbar{ display: none; }
+  .sort-label{
+    flex-shrink: 0;
+    align-self: center;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-dim);
+    padding-right: 2px;
+  }
   .filter-chip{
     flex-shrink: 0;
     background: var(--panel-raised);
@@ -638,10 +1208,63 @@
   }
   .filter-chip:hover{ color: var(--white-dim); }
   .filter-chip.active{
-    background: var(--white);
-    color: var(--bg);
-    border-color: var(--white);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    box-shadow: 0 4px 14px -6px var(--accent-glow);
   }
+
+  /* Monthly revenue chart */
+  .mini-chart{
+    display: flex;
+    align-items: flex-end;
+    gap: 7px;
+    height: 96px;
+    padding: 12px 14px 10px;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    border-radius: 16px;
+    margin-bottom: 10px;
+  }
+  .chart-col{
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+  }
+  .chart-bar{
+    width: 100%;
+    min-height: 3px;
+    border-radius: 6px 6px 3px 3px;
+    background: linear-gradient(180deg, var(--accent), var(--accent-2));
+    transform-origin: bottom;
+    animation: barGrow .6s cubic-bezier(.22,1,.36,1) backwards;
+    position: relative;
+  }
+  .chart-col.peak .chart-bar{ box-shadow: 0 0 14px -2px var(--accent-glow); }
+  .chart-label{
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .chart-caption{
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .chart-caption b{ color: var(--white-dim); }
 
   .stats-strip{
     display: grid;
@@ -654,7 +1277,9 @@
     border: 1px solid var(--panel-line);
     border-radius: 12px;
     padding: 12px;
+    transition: transform .15s ease, border-color .15s ease;
   }
+  .stat-box:hover{ transform: translateY(-2px); border-color: var(--muted-dim); }
   .stat-box .stat-label{
     font-family: var(--mono);
     font-size: 9px;
@@ -684,12 +1309,14 @@
     text-align: center;
     padding: 40px 20px;
     color: var(--muted);
+    animation: fadeUp .5s cubic-bezier(.22,1,.36,1);
   }
   .log-empty .glyph{
     font-family: var(--mono);
     font-size: 32px;
     color: var(--muted-dim);
     margin-bottom: 10px;
+    animation: floatY 3.5s ease-in-out infinite;
   }
   .log-empty .msg{
     font-size: 13px;
@@ -702,10 +1329,38 @@
     border-left: 3px solid var(--panel-line);
     border-radius: 12px;
     overflow: hidden;
-    transition: border-color .15s ease;
+    transition: border-color .15s ease, box-shadow .15s ease;
+    box-shadow: var(--shadow-tight);
   }
   .log-card.sold{ border-left-color: var(--success); }
   .log-card.freebie{ border-left-color: var(--danger); }
+  .log-card.expanded{ border-color: var(--muted-dim); }
+  .log-list .log-card{
+    animation: fadeUp .42s cubic-bezier(.22,1,.36,1) backwards;
+    animation-delay: calc(var(--i, 0) * 28ms);
+  }
+
+  .status-pills{
+    display: flex;
+    gap: 5px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+  }
+  .status-pill{
+    font-family: var(--mono);
+    font-size: 8.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 5px;
+    border: 1px solid currentColor;
+    opacity: .9;
+  }
+  .status-pill.paid{ color: var(--success); }
+  .status-pill.due{ color: var(--danger); }
+  .status-pill.done{ color: var(--accent); }
+  .status-pill.queued{ color: var(--muted); }
+  .status-pill.billed{ color: var(--accent-2); }
 
   .log-row{
     padding: 13px 14px;
@@ -721,7 +1376,7 @@
     font-family: inherit;
     color: inherit;
   }
-  .log-row:hover{ background: rgba(255,255,255,0.02); }
+  .log-row:hover{ background: var(--hover-wash); }
   .log-row-main{ min-width: 0; flex: 1; }
   .log-row-product{
     font-size: 13.5px;
@@ -761,7 +1416,7 @@
     background: transparent;
     border: none;
   }
-  .log-row-del:hover{ color: var(--danger); background: rgba(232,90,76,0.1); }
+  .log-row-del:hover{ color: var(--danger); background: var(--danger-wash); }
   .log-row-del svg{ width: 14px; height: 14px; }
 
   .log-detail{
@@ -827,7 +1482,7 @@
   .edit-price-input{
     width: 100%;
     background: var(--panel);
-    border: 1px solid var(--white-dim);
+    border: 1px solid var(--accent);
     border-radius: 8px;
     padding: 6px 10px 6px 24px;
     color: var(--white);
@@ -835,7 +1490,13 @@
     font-weight: 700;
     font-size: 13.5px;
   }
-  .edit-price-input:focus{ border-color: var(--white); outline: none; }
+  .edit-price-input:focus{ border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-glow); }
+
+  .log-detail-actions{
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
 
   .log-detail-grid{
     display: grid;
@@ -874,11 +1535,13 @@
     padding: 12px 14px;
     display: flex;
     align-items: center;
+    text-align: left;
     gap: 12px;
-    transition: border-color .15s ease;
+    transition: border-color .15s ease, box-shadow .15s ease;
   }
   .bill-item-row.checked{
-    border-color: var(--white-dim);
+    border-color: var(--accent);
+    box-shadow: 0 4px 14px -6px var(--accent-glow);
   }
   .bill-checkbox{
     width: 20px; height: 20px;
@@ -892,9 +1555,9 @@
   }
   .bill-checkbox svg{ width: 13px; height: 13px; }
   .bill-item-row.checked .bill-checkbox{
-    background: var(--white);
-    border-color: var(--white);
-    color: var(--bg);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: var(--accent);
+    color: var(--accent-ink);
   }
   .bill-item-main{ flex: 1; min-width: 0; }
   .bill-item-product{
@@ -917,6 +1580,108 @@
     font-size: 13.5px;
     color: var(--white);
     flex-shrink: 0;
+  }
+
+  /* Bill tabs */
+  .bill-tabs{
+    flex-shrink: 0;
+    display: flex;
+    gap: 6px;
+    padding: 12px 20px 0;
+  }
+  .bill-tab{
+    flex: 1;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    color: var(--muted);
+    border-radius: 11px;
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    transition: color .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .bill-tab:hover{ color: var(--white-dim); border-color: var(--muted-dim); }
+  .bill-tab.active{
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: var(--accent-ink);
+    border-color: var(--accent);
+    box-shadow: 0 6px 16px -8px var(--accent-glow);
+  }
+  .tab-count{
+    background: var(--panel);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 1px 7px;
+    font-size: 9.5px;
+    font-weight: 700;
+  }
+  .bill-tab.active .tab-count{
+    background: rgba(0,0,0,0.18);
+    color: var(--accent-ink);
+  }
+
+  /* Saved bill cards */
+  .bill-list{
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .bill-card{
+    width: 100%;
+    text-align: left;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    border-left: 3px solid var(--accent);
+    border-radius: 13px;
+    padding: 13px 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--shadow-tight);
+    animation: fadeUp .42s cubic-bezier(.22,1,.36,1) backwards;
+    animation-delay: calc(var(--i, 0) * 30ms);
+    transition: border-color .15s ease, transform .15s ease;
+  }
+  .bill-card:hover{ transform: translateY(-2px); }
+  .bill-card-main{ flex: 1; min-width: 0; }
+  .bill-card-customer{
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bill-card-meta{
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+  .bill-card-right{
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .bill-card-total{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 14.5px;
+    color: var(--white);
+    font-variant-numeric: tabular-nums;
+  }
+  .bill-card-off{
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--success);
+    margin-top: 3px;
   }
 
   .bill-footer-bar{
@@ -945,12 +1710,12 @@
 
   .toast{
     position: fixed;
-    bottom: calc(24px + env(safe-area-inset-bottom));
+    bottom: calc(88px + env(safe-area-inset-bottom));
     left: 50%;
-    transform: translateX(-50%) translateY(20px);
+    transform: translateX(-50%) translateY(16px) scale(.96);
     background: var(--white);
     color: var(--bg);
-    padding: 12px 20px;
+    padding: 11px 12px 11px 18px;
     border-radius: 999px;
     font-family: var(--mono);
     font-size: 12.5px;
@@ -958,14 +1723,34 @@
     z-index: 100;
     opacity: 0;
     pointer-events: none;
-    transition: opacity .2s ease, transform .2s ease;
+    transition: opacity .25s ease, transform .35s cubic-bezier(.22,1,.36,1);
     white-space: nowrap;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
   .toast.show{
     opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    transform: translateX(-50%) translateY(0) scale(1);
+    pointer-events: auto;
   }
+  .toast-action{
+    background: var(--bg);
+    color: var(--white);
+    border: none;
+    border-radius: 999px;
+    padding: 6px 13px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: opacity .15s ease, transform .12s ease;
+  }
+  .toast-action:hover{ opacity: .85; }
+  .toast-action:active{ transform: scale(.94); }
+  .toast-action[hidden]{ display: none; }
 
   @media (prefers-reduced-motion: reduce){
     *{ animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -980,98 +1765,185 @@
 
   <div class="topbar">
     <div class="brand">
-      <span class="eyebrow">The Print Vault</span>
-      <span class="name">Print Ledger</span>
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7l9 5 9-5-9-5z"></path><path d="M3 12l9 5 9-5"></path><path d="M3 17l9 5 9-5"></path></svg>
+      </span>
+      <span class="brand-text">
+        <span class="eyebrow">The Print Vault</span>
+        <span class="name">Print Ledger</span>
+      </span>
     </div>
-    <div class="icon-row">
-      <button class="icon-btn" id="settingsBtn" aria-label="Pricing settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-        <span class="icon-badge-dot" id="topbarSyncDot" style="display:none;"></span>
-      </button>
-      <button class="icon-btn" id="billBtn" aria-label="Create bill">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16v18l-3-2-2 2-2-2-2 2-2-2-2 2-3-2z"></path><line x1="8" y1="8" x2="16" y2="8"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="16" x2="12" y2="16"></line></svg>
-      </button>
-      <button class="icon-btn" id="logBtn" aria-label="Sold prints log">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v16a1 1 0 0 1-1.45.9L12 19l-3.55 1.9A1 1 0 0 1 7 20V4a2 2 0 0 1 2-2z"></path><line x1="9" y1="8" x2="15" y2="8"></line><line x1="9" y1="12" x2="15" y2="12"></line></svg>
-      </button>
-      <button class="icon-btn" id="couponsBtn" aria-label="Manage coupons">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L4 3a1 1 0 0 0-1 1l.24 5.59a2 2 0 0 0 .59 1.41l9.58 9.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83Z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle></svg>
-      </button>
-    </div>
+    <button class="theme-cycle" id="themeCycleBtn" aria-label="Switch theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path></svg>
+    </button>
   </div>
 
-  <!-- Price readout -->
-  <div class="readout">
-    <div class="readout-label">
-      <span>Quoted Price</span>
-      <span class="part-name" id="partNameEcho">—</span>
-    </div>
-    <div class="price-value" id="priceValueWrap"><span class="currency">₹</span><span id="priceDisplay">0</span></div>
-    <div class="price-override-row" id="priceOverrideRow" style="display:none;">
-      <input type="number" id="priceOverrideInput" inputmode="decimal" min="0" step="1" placeholder="Custom price">
-      <button class="pill-btn" id="clearOverrideBtn">Use calculated price</button>
-    </div>
-  </div>
+  <div class="stagger">
 
-  <!-- Input form -->
-  <div class="form-panel">
-    <div class="field">
-      <label for="productName">Product name</label>
-      <input type="text" id="productName" placeholder="e.g. Articulated dragon">
-    </div>
-    <div class="field">
-      <label for="customerName">Customer name</label>
-      <input type="text" id="customerName" placeholder="e.g. Rakesh">
-    </div>
-    <div class="field-row">
-      <div class="field numeric">
-        <label for="filamentWeight">Filament weight</label>
-        <div class="unit-wrap">
-          <input type="number" id="filamentWeight" placeholder="0" inputmode="decimal" min="0" step="0.1">
-          <span class="unit-tag">g</span>
+    <!-- Price readout -->
+    <section class="readout">
+      <span class="grid-lines"></span>
+      <span class="sheen"></span>
+      <span class="corner tl"></span><span class="corner tr"></span>
+      <span class="corner bl"></span><span class="corner br"></span>
+      <div class="readout-label">
+        <span>Quoted price</span>
+        <span class="part-name" id="partNameEcho">—</span>
+      </div>
+      <div class="price-value" id="priceValueWrap"><span class="currency">₹</span><span id="priceDisplay">0</span></div>
+      <div class="readout-flags" id="readoutFlags"></div>
+      <div class="readout-sub" id="readoutSub">Add weight and time to price this job</div>
+
+      <div class="readout-foot">
+        <span>The Print Vault</span>
+        <span class="dash"></span>
+        <span id="readoutStamp">Ready</span>
+      </div>
+
+      <div class="price-override-row" id="priceOverrideRow" style="display:none;">
+        <input type="number" id="priceOverrideInput" inputmode="decimal" min="0" step="1" placeholder="Custom price">
+        <button class="pill-btn" id="clearOverrideBtn">Use calculated price</button>
+      </div>
+    </section>
+
+    <!-- Input form -->
+    <section class="form-panel">
+      <div class="section-head">
+        <span class="idx">01</span>
+        <span class="txt">Print job</span>
+        <span class="rule"></span>
+      </div>
+
+      <div class="field">
+        <label for="productName">Product name</label>
+        <input type="text" id="productName" placeholder="e.g. Articulated dragon">
+      </div>
+      <div class="field">
+        <label for="customerName">Customer name</label>
+        <input type="text" id="customerName" placeholder="e.g. Rakesh">
+      </div>
+      <div class="field-row">
+        <div class="field numeric">
+          <label for="filamentWeight">Filament weight</label>
+          <div class="unit-wrap">
+            <input type="number" id="filamentWeight" placeholder="0" inputmode="decimal" min="0" step="0.1">
+            <span class="unit-tag">g</span>
+          </div>
+          <div class="quick-row">
+            <button class="quick-chip" data-add="10" data-target="filamentWeight">+10</button>
+            <button class="quick-chip" data-add="25" data-target="filamentWeight">+25</button>
+            <button class="quick-chip" data-add="50" data-target="filamentWeight">+50</button>
+          </div>
+        </div>
+        <div class="field numeric">
+          <label for="printTime">Print time</label>
+          <div class="unit-wrap">
+            <input type="number" id="printTime" placeholder="0" inputmode="decimal" min="0" step="0.1">
+            <span class="unit-tag">hrs</span>
+          </div>
+          <div class="quick-row">
+            <button class="quick-chip" data-add="0.5" data-target="printTime">+30m</button>
+            <button class="quick-chip" data-add="1" data-target="printTime">+1h</button>
+            <button class="quick-chip" data-add="3" data-target="printTime">+3h</button>
+          </div>
         </div>
       </div>
-      <div class="field numeric">
-        <label for="printTime">Print time</label>
-        <div class="unit-wrap">
-          <input type="number" id="printTime" placeholder="0" inputmode="decimal" min="0" step="0.1">
-          <span class="unit-tag">hrs</span>
+
+      <div class="section-head" style="margin-top:24px;">
+        <span class="idx">02</span>
+        <span class="txt">Adjustments</span>
+        <span class="rule"></span>
+      </div>
+
+      <div class="field">
+        <label for="couponInput">Coupon code (optional)</label>
+        <input type="text" id="couponInput" placeholder="e.g. FAMILY" autocapitalize="characters">
+        <div class="coupon-status" id="couponStatus"></div>
+      </div>
+
+      <div class="option-grid">
+        <div class="option-card" id="packagingCard">
+          <span class="opt-text">
+            <span class="opt-title">Packaging</span>
+            <span class="opt-note" id="packagingNote">Flat charge</span>
+          </span>
+          <button class="switch" id="packagingToggle" role="switch" aria-checked="false" aria-label="Packaging charge"><span class="switch-knob"></span></button>
+        </div>
+        <div class="option-card danger" id="freebieCard">
+          <span class="opt-text">
+            <span class="opt-title">Freebie</span>
+            <span class="opt-note">Zero the price</span>
+          </span>
+          <button class="switch on-danger" id="freebieToggle" role="switch" aria-checked="false" aria-label="This is a freebie"><span class="switch-knob"></span></button>
         </div>
       </div>
-    </div>
 
-    <div class="field">
-      <label for="couponInput">Coupon code (optional)</label>
-      <input type="text" id="couponInput" placeholder="e.g. FAMILY" autocapitalize="characters">
-      <div class="coupon-status" id="couponStatus"></div>
-    </div>
+      <button class="save-btn" id="saveBtn" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+        <span id="saveBtnLabel">Log this sale</span>
+      </button>
+      <div class="save-hint" id="saveHint">Saved to your ledger</div>
+    </section>
 
-    <div class="toggle-row">
-      <div class="toggle-item">
-        <span class="toggle-label">Packaging charge</span>
-        <button class="switch" id="packagingToggle" role="switch" aria-checked="false"><span class="switch-knob"></span></button>
-      </div>
-      <div class="toggle-item">
-        <span class="toggle-label">This is a freebie</span>
-        <button class="switch" id="freebieToggle" role="switch" aria-checked="false"><span class="switch-knob"></span></button>
-      </div>
-    </div>
-
-    <button class="save-btn" id="saveBtn" disabled>Log this sale</button>
-    <div class="save-hint" id="saveHint">Saved to your ledger</div>
   </div>
 
 </div>
 
+<!-- Bottom dock -->
+<nav class="dock" id="dock">
+  <button class="dock-btn" id="settingsBtn" aria-label="Pricing settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    <span class="icon-badge-dot" id="topbarSyncDot" style="display:none;"></span>
+  </button>
+  <button class="dock-btn" id="billBtn" aria-label="Create bill">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16v18l-3-2-2 2-2-2-2 2-2-2-2 2-3-2z"></path><line x1="8" y1="8" x2="16" y2="8"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="16" x2="12" y2="16"></line></svg>
+    <span class="dock-label">Bill</span>
+  </button>
+  <button class="dock-btn primary" id="logBtn" aria-label="Sold prints log">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v16a1 1 0 0 1-1.45.9L12 19l-3.55 1.9A1 1 0 0 1 7 20V4a2 2 0 0 1 2-2z"></path><line x1="9" y1="8" x2="15" y2="8"></line><line x1="9" y1="12" x2="15" y2="12"></line></svg>
+    <span class="dock-label">Ledger</span>
+  </button>
+</nav>
+
 <!-- Settings Sheet -->
 <div class="overlay" id="settingsOverlay">
   <div class="sheet">
+    <div class="sheet-handle"><i></i></div>
     <div class="sheet-header">
       <span class="sheet-title">Pricing settings</span>
       <button class="sheet-close" id="closeSettings" aria-label="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </div>
+
+    <div class="sheet-scroll">
+
+    <div class="appearance-section">
+      <div class="sync-section-title" style="margin-bottom:10px;">Appearance</div>
+      <div class="theme-grid" id="themeGrid">
+        <button class="theme-swatch" data-theme="obsidian" aria-label="Obsidian theme">
+          <span class="theme-swatch-preview" style="background:linear-gradient(135deg,#0A0A0B,#F0D9A6);"></span>
+          <span class="theme-swatch-label">Obsidian</span>
+        </button>
+        <button class="theme-swatch" data-theme="aurora" aria-label="Aurora theme">
+          <span class="theme-swatch-preview" style="background:linear-gradient(135deg,#0B0B16,#8B7CF6);"></span>
+          <span class="theme-swatch-label">Aurora</span>
+        </button>
+        <button class="theme-swatch" data-theme="sunset" aria-label="Sunset theme">
+          <span class="theme-swatch-preview" style="background:linear-gradient(135deg,#150F0A,#FF9A56);"></span>
+          <span class="theme-swatch-label">Sunset</span>
+        </button>
+        <button class="theme-swatch" data-theme="ocean" aria-label="Ocean theme">
+          <span class="theme-swatch-preview" style="background:linear-gradient(135deg,#08121A,#33C7F2);"></span>
+          <span class="theme-swatch-label">Ocean</span>
+        </button>
+        <button class="theme-swatch" data-theme="paper" aria-label="Paper theme">
+          <span class="theme-swatch-preview" style="background:linear-gradient(135deg,#F6F5F1,#2657D6);"></span>
+          <span class="theme-swatch-label">Paper</span>
+        </button>
+      </div>
+    </div>
+
     <div class="settings-note">These rates apply to every quote. Power rate defaults to a high-end Mangalore commercial tariff — adjust to match your actual bill.</div>
 
     <div class="field numeric">
@@ -1138,20 +2010,10 @@
       <button class="save-btn" id="connectSyncBtn">Connect</button>
       <button class="pill-btn" id="disconnectSyncBtn" style="width:100%; margin-top:10px; display:none; color: var(--danger);">Disconnect sync</button>
     </div>
-  </div>
-</div>
 
-<!-- Coupons Sheet -->
-<div class="overlay" id="couponOverlay">
-  <div class="sheet">
-    <div class="sheet-header">
-      <span class="sheet-title">Coupons</span>
-      <button class="sheet-close" id="closeCoupons" aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      </button>
-    </div>
-    <div class="coupon-manager open" id="couponManager">
-      <div class="settings-note">Manage discount codes. Applied at checkout by typing the code in the pricer's coupon field. Tap a coupon to edit it.</div>
+    <button class="secret-trigger" id="secretTrigger" aria-label="More">···</button>
+    <div class="coupon-manager" id="couponManager">
+      <div class="settings-note">Manage discount codes. Applied at checkout by typing the code in the pricer's coupon field.</div>
       <div class="coupon-list" id="couponList"></div>
       <div class="field-row" style="margin-top:14px;">
         <div class="field">
@@ -1167,7 +2029,8 @@
         </div>
       </div>
       <button class="save-btn" id="addCouponBtn">Add coupon</button>
-      <button class="pill-btn" id="cancelCouponEditBtn" style="width:100%; margin-top:10px; display:none;">Cancel edit</button>
+    </div>
+
     </div>
   </div>
 </div>
@@ -1175,12 +2038,21 @@
 <!-- Log Sheet -->
 <div class="overlay" id="logOverlay">
   <div class="sheet">
+    <div class="sheet-handle"><i></i></div>
     <div class="sheet-header">
       <span class="sheet-title">Sold prints</span>
       <button class="sheet-close" id="closeLog" aria-label="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </div>
+
+    <div class="sheet-scroll">
+
+    <div class="chart-caption">
+      <span>Revenue · last 6 months</span>
+      <b id="chartTotal">₹0</b>
+    </div>
+    <div class="mini-chart" id="miniChart"></div>
 
     <div class="stats-strip">
       <div class="stat-box">
@@ -1192,7 +2064,7 @@
         <div class="stat-value" id="statRevenue">₹0</div>
       </div>
       <div class="stat-box">
-        <div class="stat-label">Filament used</div>
+        <div class="stat-label">Filament</div>
         <div class="stat-value" id="statFilament">0g</div>
       </div>
       <div class="stat-box">
@@ -1229,21 +2101,40 @@
       <button class="filter-chip" data-filter="pending">Pending</button>
     </div>
 
+    <div class="filter-row" id="sortRow">
+      <span class="sort-label">Sort</span>
+      <button class="filter-chip active" data-sort="recent">Newest</button>
+      <button class="filter-chip" data-sort="price">Top price</button>
+      <button class="filter-chip" data-sort="profit">Top profit</button>
+    </div>
+
     <div class="log-list" id="logList"></div>
+
+    </div>
   </div>
 </div>
 
 <!-- Bill Generator Sheet -->
 <div class="overlay" id="billOverlay">
-  <div class="sheet bill-sheet">
+  <div class="sheet">
+    <div class="sheet-handle"><i></i></div>
     <div class="sheet-header">
-      <span class="sheet-title">Create bill</span>
+      <span class="sheet-title" id="billSheetTitle">Create bill</span>
       <button class="sheet-close" id="closeBill" aria-label="Close">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </div>
 
+    <div class="bill-tabs" id="billTabs">
+      <button class="bill-tab active" data-tab="new">New bill</button>
+      <button class="bill-tab" data-tab="saved">Saved <span class="tab-count" id="savedBillsCount">0</span></button>
+    </div>
+
     <div class="bill-scroll-area" id="billScrollArea">
+      <div id="billSavedView" style="display:none;">
+        <div class="bill-list" id="billList"></div>
+      </div>
+
       <div id="billPickerView">
         <div class="field">
           <label for="billCustomerName">Customer name</label>
@@ -1276,17 +2167,30 @@
         <span class="bill-footer-count" id="billSelectedCount">0 selected</span>
         <span class="bill-footer-total" id="billSelectedTotal">₹0</span>
       </div>
-      <button class="save-btn" id="generateBillBtn" disabled>Generate bill image</button>
+      <button class="save-btn" id="generateBillBtn" disabled>Generate bill</button>
 
       <div id="billResultActions" style="display:none;">
         <button class="save-btn" id="downloadBillBtn">Download image</button>
-        <button class="pill-btn" id="backToBillPicker" style="width:100%; margin-top:10px;">Back to selection</button>
+        <div class="log-detail-actions">
+          <button class="pill-btn" id="editBillBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+            Edit
+          </button>
+          <button class="pill-btn" id="deleteBillBtn" style="color: var(--danger);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+            Delete
+          </button>
+        </div>
+        <button class="pill-btn" id="backToBillPicker" style="width:100%; margin-top:8px;">Done</button>
       </div>
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast">
+  <span id="toastMsg"></span>
+  <button class="toast-action" id="toastAction" hidden></button>
+</div>
 
 <script>
 (function(){
@@ -1356,6 +2260,46 @@
     return coupons.find(c=> c.code.toUpperCase() === norm) || null;
   }
 
+  // ---------- Bills ----------
+  const BILLS_KEY = "printLedger_bills_v1";
+
+  function loadBills(){
+    try{
+      const raw = localStorage.getItem(BILLS_KEY);
+      if(!raw) return [];
+      return JSON.parse(raw);
+    }catch(e){ return []; }
+  }
+
+  function saveBills(list){
+    localStorage.setItem(BILLS_KEY, JSON.stringify(list));
+    if(typeof pushToSync === "function") pushToSync();
+  }
+
+  // A bill's discount is carried on the entries it covers, so the ledger
+  // shows what the customer actually paid rather than the list price.
+  function applyBillDiscounts(bill){
+    bill.items.forEach(item=>{
+      const entry = log.find(e=> e.id === item.id);
+      if(!entry) return;
+      entry.billId = bill.id;
+      entry.billDiscount = bill.couponPercent ? (entry.total||0) * (bill.couponPercent/100) : 0;
+    });
+  }
+
+  function clearBillDiscounts(billId){
+    log.forEach(e=>{
+      if(e.billId === billId){
+        e.billId = "";
+        e.billDiscount = 0;
+      }
+    });
+  }
+
+  function effectiveTotal(e){
+    return (e.total||0) - (e.billDiscount||0);
+  }
+
   // ---------- Cloud sync (Firebase Realtime Database) ----------
   const firebaseConfig = {
     apiKey: "AIzaSyD3YpAiS_yIGi3yWh-6_IDl_2J02oE6lVI",
@@ -1397,14 +2341,22 @@
     }
   }
 
+  // The SDK is loaded from a CDN, so it may simply not be there (offline,
+  // blocked, opened from a file). Sync is optional — the app must still run.
+  function firebaseAvailable(){
+    return typeof firebase !== "undefined" && typeof firebase.initializeApp === "function";
+  }
+
   function initFirebaseIfNeeded(){
-    if(syncApp) return;
+    if(syncApp) return true;
+    if(!firebaseAvailable()) return false;
     try{
       syncApp = firebase.initializeApp(firebaseConfig);
     }catch(e){
       // already initialized (hot reload scenarios) — reuse existing app
-      syncApp = firebase.app();
+      try{ syncApp = firebase.app(); }catch(err){ return false; }
     }
+    return !!syncApp;
   }
 
   function connectSync(code){
@@ -1413,10 +2365,24 @@
       showToast("Enter a sync code first");
       return;
     }
-    initFirebaseIfNeeded();
+    if(!initFirebaseIfNeeded()){
+      setSyncStatus("error");
+      showToast("Sync unavailable offline");
+      return;
+    }
+
     syncCode = clean;
     localStorage.setItem(SYNC_CODE_KEY, syncCode);
-    syncDbRef = firebase.database().ref("syncedUsers/" + syncCode);
+
+    try{
+      syncDbRef = firebase.database().ref("syncedUsers/" + syncCode);
+    }catch(err){
+      console.error("Sync connect error", err);
+      syncDbRef = null;
+      setSyncStatus("error");
+      showToast("Sync unavailable");
+      return;
+    }
 
     setSyncStatus("syncing");
 
@@ -1434,6 +2400,7 @@
         if(remote.settings) { settings = {...defaultSettings, ...remote.settings}; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }
         if(remote.log) { log = remote.log; localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
         if(remote.coupons) { coupons = remote.coupons; localStorage.setItem(COUPONS_KEY, JSON.stringify(coupons)); }
+        if(remote.bills) { bills = remote.bills; localStorage.setItem(BILLS_KEY, JSON.stringify(bills)); }
         renderPrice();
         renderLog();
       }catch(err){
@@ -1465,7 +2432,7 @@
     setSyncStatus("syncing");
     syncPushTimer = setTimeout(()=>{
       syncDbRef.set({
-        settings, log, coupons,
+        settings, log, coupons, bills,
         updatedAt: Date.now()
       }).then(()=>{
         setSyncStatus("connected");
@@ -1540,9 +2507,31 @@
   }
   applyFirstCouponFixIfNeeded();
 
+  // ---------- Theme ----------
+  const THEME_KEY = "printLedger_theme_v1";
+  const THEME_BG = { obsidian:"#0A0A0B", aurora:"#0B0B16", sunset:"#150F0A", ocean:"#08121A", paper:"#F6F5F1" };
+
+  function applyTheme(theme){
+    if(!THEME_BG[theme]) theme = "obsidian";
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem(THEME_KEY, theme);
+    const mc = document.querySelector('meta[name="theme-color"]');
+    if(mc) mc.setAttribute("content", THEME_BG[theme]);
+    document.querySelectorAll(".theme-swatch").forEach(btn=>{
+      btn.classList.toggle("active", btn.getAttribute("data-theme") === theme);
+    });
+  }
+
+  document.querySelectorAll(".theme-swatch").forEach(btn=>{
+    btn.addEventListener("click", ()=> applyTheme(btn.getAttribute("data-theme")));
+  });
+
+  applyTheme(localStorage.getItem(THEME_KEY) || document.documentElement.getAttribute("data-theme") || "obsidian");
+
   let settings = loadSettings();
   let log = loadLog();
   let coupons = loadCoupons();
+  let bills = loadBills();
 
   // ---------- DOM refs ----------
   const productName = document.getElementById("productName");
@@ -1561,9 +2550,22 @@
   const priceOverrideRow = document.getElementById("priceOverrideRow");
   const priceOverrideInput = document.getElementById("priceOverrideInput");
   const clearOverrideBtn = document.getElementById("clearOverrideBtn");
+  const saveBtnLabel = document.getElementById("saveBtnLabel");
+  const readoutFlags = document.getElementById("readoutFlags");
+  const readoutSub = document.getElementById("readoutSub");
+  const readoutStamp = document.getElementById("readoutStamp");
+  const packagingCard = document.getElementById("packagingCard");
+  const freebieCard = document.getElementById("freebieCard");
+  const packagingNote = document.getElementById("packagingNote");
+  const dock = document.getElementById("dock");
+  const themeCycleBtn = document.getElementById("themeCycleBtn");
+  const miniChart = document.getElementById("miniChart");
+  const chartTotal = document.getElementById("chartTotal");
+  const sortRow = document.getElementById("sortRow");
+  const toastMsg = document.getElementById("toastMsg");
+  const toastAction = document.getElementById("toastAction");
 
   const settingsBtn = document.getElementById("settingsBtn");
-  const couponsBtn = document.getElementById("couponsBtn");
   const settingsOverlay = document.getElementById("settingsOverlay");
   const closeSettings = document.getElementById("closeSettings");
   const saveSettingsBtn = document.getElementById("saveSettingsBtn");
@@ -1583,14 +2585,12 @@
   const connectSyncBtn = document.getElementById("connectSyncBtn");
   const disconnectSyncBtn = document.getElementById("disconnectSyncBtn");
 
-  const couponOverlay = document.getElementById("couponOverlay");
-  const closeCoupons = document.getElementById("closeCoupons");
+  const secretTrigger = document.getElementById("secretTrigger");
   const couponManager = document.getElementById("couponManager");
   const couponList = document.getElementById("couponList");
   const newCouponCode = document.getElementById("newCouponCode");
   const newCouponPercent = document.getElementById("newCouponPercent");
   const addCouponBtn = document.getElementById("addCouponBtn");
-  const cancelCouponEditBtn = document.getElementById("cancelCouponEditBtn");
 
   const logBtn = document.getElementById("logBtn");
   const logOverlay = document.getElementById("logOverlay");
@@ -1619,6 +2619,13 @@
   const billPreviewImg = document.getElementById("billPreviewImg");
   const downloadBillBtn = document.getElementById("downloadBillBtn");
   const backToBillPicker = document.getElementById("backToBillPicker");
+  const billSheetTitle = document.getElementById("billSheetTitle");
+  const billTabs = document.getElementById("billTabs");
+  const billSavedView = document.getElementById("billSavedView");
+  const billList = document.getElementById("billList");
+  const savedBillsCount = document.getElementById("savedBillsCount");
+  const editBillBtn = document.getElementById("editBillBtn");
+  const deleteBillBtn = document.getElementById("deleteBillBtn");
   const statCount = document.getElementById("statCount");
   const statRevenue = document.getElementById("statRevenue");
   const statFilament = document.getElementById("statFilament");
@@ -1628,6 +2635,38 @@
 
   const exportBtn = document.getElementById("exportBtn");
   const toast = document.getElementById("toast");
+
+  // ---------- Interaction utilities ----------
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function haptic(pattern){
+    if(navigator.vibrate) navigator.vibrate(pattern);
+  }
+
+  // Material-style press ripple on every button that opts in
+  document.addEventListener("pointerdown", (e)=>{
+    if(prefersReducedMotion) return;
+    const btn = e.target.closest(".save-btn, .dock-btn, .pill-btn, .filter-chip, .quick-chip");
+    if(!btn || btn.disabled) return;
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const ripple = document.createElement("span");
+    ripple.className = "ripple";
+    ripple.style.width = ripple.style.height = size + "px";
+    ripple.style.left = (e.clientX - rect.left - size/2) + "px";
+    ripple.style.top = (e.clientY - rect.top - size/2) + "px";
+    btn.appendChild(ripple);
+    setTimeout(()=> ripple.remove(), 620);
+  });
+
+  // Dock tucks away while scrolling down, returns on scroll up
+  let lastScrollY = window.scrollY;
+  window.addEventListener("scroll", ()=>{
+    const y = window.scrollY;
+    if(Math.abs(y - lastScrollY) < 8) return;
+    dock.classList.toggle("tucked", y > lastScrollY && y > 120);
+    lastScrollY = y;
+  }, {passive: true});
 
   // ---------- Formatting ----------
   function inr(n){
@@ -1672,12 +2711,75 @@
     return { filamentCost, powerCost, labourCost, packagingCost, profitCost, discount, coupon, total };
   }
 
-  function renderPrice(){
-    const { total, coupon, discount } = computePrice();
+  // Animated number rolling — eases the displayed value toward the real one
+  let priceAnimFrame = null;
+  let shownPrice = 0;
+  function animatePriceTo(target){
+    if(prefersReducedMotion){
+      shownPrice = target;
+      priceDisplay.textContent = inrPrecise(target);
+      return;
+    }
+    const from = shownPrice;
+    const delta = target - from;
+    if(Math.abs(delta) < 0.5){
+      shownPrice = target;
+      priceDisplay.textContent = inrPrecise(target);
+      return;
+    }
+    const start = performance.now();
+    const dur = 420;
+    cancelAnimationFrame(priceAnimFrame);
+    const step = (now)=>{
+      const p = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      shownPrice = from + delta * eased;
+      // roll whole rupees mid-flight, land on the exact figure
+      priceDisplay.textContent = inrPrecise(Math.round(shownPrice));
+      if(p < 1){
+        priceAnimFrame = requestAnimationFrame(step);
+      }else{
+        shownPrice = target;
+        priceDisplay.textContent = inrPrecise(target);
+      }
+    };
+    priceAnimFrame = requestAnimationFrame(step);
+    priceValueWrap.classList.remove("bump");
+    void priceValueWrap.offsetWidth;
+    priceValueWrap.classList.add("bump");
+  }
 
-    priceDisplay.textContent = inrPrecise(total);
+  function renderPrice(){
+    const parts = computePrice();
+    const { total, coupon, discount, filamentCost, powerCost, labourCost, packagingCost } = parts;
+
+    animatePriceTo(total);
     partNameEcho.textContent = productName.value.trim() || "—";
     priceValueWrap.classList.toggle("overridden", priceOverride !== null && !freebieOn);
+
+    // Status flags
+    const flags = [];
+    if(freebieOn) flags.push(`<span class="flag-pill danger">Freebie</span>`);
+    if(priceOverride !== null && !freebieOn) flags.push(`<span class="flag-pill success">Custom price</span>`);
+    if(coupon) flags.push(`<span class="flag-pill accent">${escapeHtml(coupon.code.toUpperCase())} · ${coupon.percent}% off</span>`);
+    if(packagingOn) flags.push(`<span class="flag-pill accent">Packaging</span>`);
+    readoutFlags.innerHTML = flags.join("");
+
+    // Profit sub-line
+    const w = parseFloat(filamentWeight.value) || 0;
+    const t = parseFloat(printTime.value) || 0;
+    const costs = filamentCost + powerCost + labourCost + packagingCost;
+    if(w > 0 && t > 0){
+      const profit = total - costs;
+      const margin = total > 0 ? (profit / total * 100) : 0;
+      readoutSub.innerHTML = freebieOn
+        ? `Costs you <b style="color:var(--danger)">${inr(costs)}</b> to give away`
+        : `<b>${inr(profit)}</b> profit · ${margin.toFixed(0)}% margin`;
+      readoutStamp.textContent = `${w}g · ${t}h`;
+    }else{
+      readoutSub.textContent = "Add weight and time to price this job";
+      readoutStamp.textContent = "Ready";
+    }
 
     const rawCode = couponInput.value.trim();
     if(!rawCode){
@@ -1691,8 +2793,8 @@
       couponStatus.className = "coupon-status invalid";
     }
 
-    const w = parseFloat(filamentWeight.value) || 0;
-    const t = parseFloat(printTime.value) || 0;
+    packagingNote.textContent = settings.packagingCost > 0 ? `+${inr(settings.packagingCost)} flat` : "Flat charge";
+
     const hasEnoughData = w > 0 && t > 0 && productName.value.trim().length > 0;
     saveBtn.disabled = !hasEnoughData;
   }
@@ -1750,22 +2852,56 @@
   packagingToggle.addEventListener("click", ()=>{
     packagingOn = !packagingOn;
     setSwitch(packagingToggle, packagingOn);
+    packagingCard.classList.toggle("on", packagingOn);
+    haptic(12);
     renderPrice();
   });
 
   freebieToggle.addEventListener("click", ()=>{
     freebieOn = !freebieOn;
     setSwitch(freebieToggle, freebieOn);
+    freebieCard.classList.toggle("on", freebieOn);
+    haptic(12);
     renderPrice();
+  });
+
+  // Quick-add chips bump the numeric fields without opening the keypad
+  document.querySelectorAll(".quick-chip").forEach(chip=>{
+    chip.addEventListener("click", ()=>{
+      const target = document.getElementById(chip.getAttribute("data-target"));
+      const add = parseFloat(chip.getAttribute("data-add"));
+      const current = parseFloat(target.value) || 0;
+      target.value = Math.round((current + add) * 100) / 100;
+      haptic(8);
+      renderPrice();
+    });
   });
 
   // ---------- Toast ----------
   let toastTimer;
-  function showToast(msg){
-    toast.textContent = msg;
+  let toastActionHandler = null;
+
+  function showToast(msg, actionLabel, onAction){
+    toastMsg.textContent = msg;
+    if(toastActionHandler) toastAction.removeEventListener("click", toastActionHandler);
+
+    if(actionLabel && onAction){
+      toastAction.textContent = actionLabel;
+      toastAction.hidden = false;
+      toastActionHandler = ()=>{
+        onAction();
+        toast.classList.remove("show");
+        clearTimeout(toastTimer);
+      };
+      toastAction.addEventListener("click", toastActionHandler);
+    }else{
+      toastAction.hidden = true;
+      toastActionHandler = null;
+    }
+
     toast.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=> toast.classList.remove("show"), 2200);
+    toastTimer = setTimeout(()=> toast.classList.remove("show"), actionLabel ? 5000 : 2200);
   }
 
   // ---------- Save sale ----------
@@ -1789,9 +2925,18 @@
     };
     log.unshift(entry);
     saveLog(log);
+    haptic([14, 40, 14]);
 
     saveHint.classList.add("show");
     setTimeout(()=> saveHint.classList.remove("show"), 1800);
+
+    // Button morphs into a confirmation, then settles back
+    saveBtn.classList.add("saved");
+    saveBtnLabel.textContent = "Logged";
+    setTimeout(()=>{
+      saveBtn.classList.remove("saved");
+      saveBtnLabel.textContent = "Log this sale";
+    }, 1400);
 
     productName.value = "";
     customerName.value = "";
@@ -1804,6 +2949,8 @@
     priceOverrideRow.style.display = "none";
     setSwitch(packagingToggle, false);
     setSwitch(freebieToggle, false);
+    packagingCard.classList.remove("on");
+    freebieCard.classList.remove("on");
     renderPrice();
     renderLog();
   });
@@ -1827,16 +2974,6 @@
     if(e.target === settingsOverlay) settingsOverlay.classList.remove("open");
   });
 
-  couponsBtn.addEventListener("click", ()=>{
-    resetCouponForm();
-    renderCouponList();
-    couponOverlay.classList.add("open");
-  });
-  closeCoupons.addEventListener("click", ()=> couponOverlay.classList.remove("open"));
-  couponOverlay.addEventListener("click", (e)=>{
-    if(e.target === couponOverlay) couponOverlay.classList.remove("open");
-  });
-
   saveSettingsBtn.addEventListener("click", ()=>{
     settings = {
       filamentCostPerKg: parseFloat(rateFilament.value) || 0,
@@ -1853,6 +2990,10 @@
   });
 
   // ---------- Coupon manager ----------
+  secretTrigger.addEventListener("click", ()=>{
+    couponManager.classList.toggle("open");
+    if(couponManager.classList.contains("open")) renderCouponList();
+  });
 
   function renderCouponList(){
     if(coupons.length === 0){
@@ -1861,55 +3002,22 @@
     }
     couponList.innerHTML = coupons.map((c,i)=> `
       <div class="coupon-row" data-idx="${i}">
-        <span class="coupon-row-main" data-idx="${i}"><span class="ccode">${escapeHtml(c.code.toUpperCase())}</span><span class="cpct">${c.percent}% off</span></span>
+        <span><span class="ccode">${escapeHtml(c.code.toUpperCase())}</span><span class="cpct">${c.percent}% off</span></span>
         <button class="coupon-row-del" aria-label="Delete coupon" data-idx="${i}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
         </button>
       </div>`).join("");
 
-    couponList.querySelectorAll(".coupon-row-main").forEach(el=>{
-      el.style.cursor = "pointer";
-      el.addEventListener("click", ()=>{
-        const idx = parseInt(el.getAttribute("data-idx"), 10);
-        startCouponEdit(idx);
-      });
-    });
-
     couponList.querySelectorAll(".coupon-row-del").forEach(btn=>{
-      btn.addEventListener("click", (e)=>{
-        e.stopPropagation();
+      btn.addEventListener("click", ()=>{
         const idx = parseInt(btn.getAttribute("data-idx"), 10);
         coupons.splice(idx, 1);
         saveCoupons(coupons);
-        if(editingCouponIdx === idx) resetCouponForm();
         renderCouponList();
         renderPrice();
       });
     });
   }
-
-  let editingCouponIdx = null;
-
-  function startCouponEdit(idx){
-    const c = coupons[idx];
-    if(!c) return;
-    editingCouponIdx = idx;
-    newCouponCode.value = c.code.toUpperCase();
-    newCouponPercent.value = c.percent;
-    addCouponBtn.textContent = "Update coupon";
-    cancelCouponEditBtn.style.display = "block";
-    newCouponCode.focus();
-  }
-
-  function resetCouponForm(){
-    editingCouponIdx = null;
-    newCouponCode.value = "";
-    newCouponPercent.value = "";
-    addCouponBtn.textContent = "Add coupon";
-    cancelCouponEditBtn.style.display = "none";
-  }
-
-  cancelCouponEditBtn.addEventListener("click", resetCouponForm);
 
   addCouponBtn.addEventListener("click", ()=>{
     const code = newCouponCode.value.trim();
@@ -1918,20 +3026,15 @@
       showToast("Enter a code and a discount %");
       return;
     }
-    const dupIdx = coupons.findIndex(c=> c.code.toUpperCase() === code.toUpperCase());
-    if(editingCouponIdx !== null){
-      if(dupIdx !== -1 && dupIdx !== editingCouponIdx){
-        showToast("Another coupon already uses that code");
-        return;
-      }
-      coupons[editingCouponIdx] = { code: code.toUpperCase(), percent: pct };
-    }else if(dupIdx !== -1){
-      coupons[dupIdx] = { code: code.toUpperCase(), percent: pct };
+    const existingIdx = coupons.findIndex(c=> c.code.toUpperCase() === code.toUpperCase());
+    if(existingIdx !== -1){
+      coupons[existingIdx] = { code: code.toUpperCase(), percent: pct };
     }else{
       coupons.push({ code: code.toUpperCase(), percent: pct });
     }
     saveCoupons(coupons);
-    resetCouponForm();
+    newCouponCode.value = "";
+    newCouponPercent.value = "";
     renderCouponList();
     showToast("Coupon saved");
     renderPrice();
@@ -1947,17 +3050,61 @@
 
   updateSyncUI();
   setSyncStatus("idle");
-  if(syncCode){
-    connectSync(syncCode);
-  }
 
   // ---------- Log sheet ----------
   let activeFilter = "all";
+  let activeSort = "recent";
   let searchQuery = "";
   let expandedId = null;
 
+  function entryCosts(e){
+    return (e.filamentCost||0) + (e.powerCost||0) + (e.labourCost||0) + (e.packagingCost||0);
+  }
+
+  function entryProfit(e){
+    return effectiveTotal(e) - entryCosts(e);
+  }
+
+  // Revenue for the trailing 6 months, oldest first
+  function monthlyRevenue(){
+    const now = new Date();
+    const buckets = [];
+    for(let i = 5; i >= 0; i--){
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      buckets.push({
+        key: d.getFullYear() + "-" + d.getMonth(),
+        label: d.toLocaleDateString("en-IN", {month: "short"}),
+        total: 0
+      });
+    }
+    log.forEach(e=>{
+      const d = new Date(e.date);
+      if(isNaN(d)) return;
+      const key = d.getFullYear() + "-" + d.getMonth();
+      const bucket = buckets.find(b=> b.key === key);
+      if(bucket) bucket.total += effectiveTotal(e);
+    });
+    return buckets;
+  }
+
+  function renderChart(){
+    const buckets = monthlyRevenue();
+    const peak = Math.max(...buckets.map(b=> b.total), 1);
+    chartTotal.textContent = inr(buckets.reduce((s,b)=> s + b.total, 0));
+
+    miniChart.innerHTML = buckets.map((b, i)=>{
+      const height = Math.max(3, Math.round((b.total / peak) * 100));
+      const isPeak = b.total === peak && b.total > 0;
+      return `
+        <div class="chart-col ${isPeak ? "peak" : ""}" title="${b.label}: ${inr(b.total)}">
+          <div class="chart-bar" style="height:${height}%; animation-delay:${i * 60}ms;"></div>
+          <div class="chart-label">${b.label}</div>
+        </div>`;
+    }).join("");
+  }
+
   function computeStats(entries){
-    const revenue = entries.reduce((s,e)=> s + (e.total||0), 0);
+    const revenue = entries.reduce((s,e)=> s + effectiveTotal(e), 0);
     const totalWeight = entries.reduce((s,e)=> s + (e.weight||0), 0);
     const totalFilamentCost = entries.reduce((s,e)=> s + (e.filamentCost||0), 0);
     const totalPowerCost = entries.reduce((s,e)=> s + (e.powerCost||0), 0);
@@ -1985,12 +3132,20 @@
       );
     }
 
+    if(activeSort === "price"){
+      entries = [...entries].sort((a,b)=> (b.total||0) - (a.total||0));
+    }else if(activeSort === "profit"){
+      entries = [...entries].sort((a,b)=> entryProfit(b) - entryProfit(a));
+    }
+
     return entries;
   }
 
   function renderLog(){
     const filtered = getFilteredLog();
     const stats = computeStats(log); // stats strip always reflects everything, not just filtered view
+
+    renderChart();
 
     statCount.textContent = log.length;
     statRevenue.textContent = inr(stats.revenue);
@@ -2019,15 +3174,17 @@
       return;
     }
 
-    logList.innerHTML = filtered.map(e=>{
+    logList.innerHTML = filtered.map((e, i)=>{
       const d = new Date(e.date);
       const dateStr = isNaN(d) ? "" : d.toLocaleDateString("en-IN", {day:"2-digit", month:"short"});
 
-      const rowExpenses = (e.filamentCost||0) + (e.powerCost||0) + (e.labourCost||0) + (e.packagingCost||0);
-      const rowProfit = (e.total||0) - rowExpenses;
+      const rowExpenses = entryCosts(e);
+      const rowNet = effectiveTotal(e);
+      const rowProfit = rowNet - rowExpenses;
       const rowProfitPct = rowExpenses > 0 ? (rowProfit / rowExpenses * 100) : 0;
       const isFreebie = e.type === "Freebie";
       const isExpanded = e.id === expandedId;
+      const billed = (e.billDiscount||0) > 0;
 
       const metaParts = [];
       if(e.customer) metaParts.push(e.customer);
@@ -2036,15 +3193,22 @@
       if(e.time) metaParts.push(e.time+"h");
       if(!isFreebie) metaParts.push((rowProfit>=0?"+":"−")+inr(Math.abs(rowProfit))+" profit");
 
+      const pills = [
+        e.paid ? `<span class="status-pill paid">Paid</span>` : `<span class="status-pill due">Unpaid</span>`,
+        e.printDone ? `<span class="status-pill done">Printed</span>` : `<span class="status-pill queued">Queued</span>`,
+        billed ? `<span class="status-pill billed">Billed −${inr(e.billDiscount)}</span>` : ""
+      ].join("");
+
       return `
-        <div class="log-card ${isFreebie ? "freebie" : "sold"} ${isExpanded ? "expanded" : ""}" data-id="${e.id}">
+        <div class="log-card ${isFreebie ? "freebie" : "sold"} ${isExpanded ? "expanded" : ""}" data-id="${e.id}" style="--i:${Math.min(i, 14)}">
           <button class="log-row" data-id="${e.id}">
             <div class="log-row-main">
               <div class="log-row-product">${escapeHtml(e.product || "Untitled")}</div>
               <div class="log-row-meta">${escapeHtml(metaParts.join(" · "))}</div>
+              <div class="status-pills">${pills}</div>
             </div>
             <div class="log-row-right">
-              <span class="log-row-price">${inr(e.total)}</span>
+              <span class="log-row-price">${inr(rowNet)}</span>
             </div>
           </button>
           <div class="log-detail">
@@ -2057,7 +3221,7 @@
               </div>
               <div class="log-detail-grid">
                 <div class="log-detail-item price-edit-tile" data-id="${e.id}">
-                  <div class="dlabel">Sold price (double-tap to edit)</div>
+                  <div class="dlabel">${billed ? "List price (double-tap to edit)" : "Sold price (double-tap to edit)"}</div>
                   <div class="dvalue price-display-mode" data-id="${e.id}">${inr(e.total)}</div>
                   <div class="price-edit-mode" data-id="${e.id}" style="display:none;">
                     <span class="edit-price-currency">₹</span>
@@ -2071,6 +3235,8 @@
                 <div class="log-detail-item"><div class="dlabel">Labour cost</div><div class="dvalue">${inr(e.labourCost||0)}</div></div>
                 <div class="log-detail-item"><div class="dlabel">Packaging</div><div class="dvalue">${inr(e.packagingCost||0)}</div></div>
                 ${e.couponCode ? `<div class="log-detail-item"><div class="dlabel">Coupon</div><div class="dvalue">${escapeHtml(e.couponCode)} (${e.couponPercent}%)</div></div>` : ""}
+                ${billed ? `<div class="log-detail-item"><div class="dlabel">Bill discount</div><div class="dvalue negative">−${inr(e.billDiscount)}</div></div>
+                <div class="log-detail-item"><div class="dlabel">Customer paid</div><div class="dvalue positive">${inr(rowNet)}</div></div>` : ""}
                 <div class="log-detail-item"><div class="dlabel">Profit</div><div class="dvalue ${rowProfit<0?"negative":"positive"}">${inr(rowProfit)}</div></div>
                 ${!isFreebie ? `<div class="log-detail-item"><div class="dlabel">Profit %</div><div class="dvalue ${rowProfitPct<0?"negative":"positive"}">${rowProfitPct>=0?"+":""}${rowProfitPct.toFixed(0)}%</div></div>` : ""}
               </div>
@@ -2088,10 +3254,16 @@
                   <button class="switch on-danger toggle-freebie" data-id="${e.id}" role="switch" aria-checked="${isFreebie ? "true" : "false"}"><span class="switch-knob"></span></button>
                 </div>
               </div>
-              <button class="pill-btn log-detail-del" data-id="${e.id}" style="margin-top:14px; color: var(--danger); border-color: var(--panel-line);">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
-                Delete entry
-              </button>
+              <div class="log-detail-actions">
+                <button class="pill-btn log-detail-dup" data-id="${e.id}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  Reprice
+                </button>
+                <button class="pill-btn log-detail-del" data-id="${e.id}" style="color: var(--danger);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>`;
@@ -2117,10 +3289,40 @@
       btn.addEventListener("click", (e)=>{
         e.stopPropagation();
         const id = btn.getAttribute("data-id");
+        const index = log.findIndex(x=> x.id === id);
+        if(index === -1) return;
+        const removed = log[index];
+
         log = log.filter(x=> x.id !== id);
         saveLog(log);
         expandedId = null;
         renderLog();
+        haptic(20);
+
+        showToast("Entry deleted", "Undo", ()=>{
+          log.splice(index, 0, removed);
+          saveLog(log);
+          renderLog();
+        });
+      });
+    });
+
+    logList.querySelectorAll(".log-detail-dup").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        const id = btn.getAttribute("data-id");
+        const entry = log.find(x=> x.id === id);
+        if(!entry) return;
+
+        productName.value = entry.product || "";
+        customerName.value = entry.customer || "";
+        filamentWeight.value = entry.weight || "";
+        printTime.value = entry.time || "";
+        couponInput.value = entry.couponCode || "";
+        priceOverride = null;
+        logOverlay.classList.remove("open");
+        renderPrice();
+        showToast("Loaded into the pricer");
       });
     });
 
@@ -2236,41 +3438,242 @@
     chip.addEventListener("click", ()=>{
       activeFilter = chip.getAttribute("data-filter");
       filterRow.querySelectorAll(".filter-chip").forEach(c=> c.classList.toggle("active", c === chip));
+      haptic(8);
       renderLog();
     });
+  });
+
+  sortRow.querySelectorAll(".filter-chip").forEach(chip=>{
+    chip.addEventListener("click", ()=>{
+      activeSort = chip.getAttribute("data-sort");
+      sortRow.querySelectorAll(".filter-chip").forEach(c=> c.classList.toggle("active", c === chip));
+      haptic(8);
+      renderLog();
+    });
+  });
+
+  // ---------- Sheet gestures & shortcuts ----------
+  const overlays = [settingsOverlay, logOverlay, billOverlay];
+
+  function closeAllSheets(){
+    overlays.forEach(o=> o.classList.remove("open"));
+  }
+
+  document.addEventListener("keydown", (e)=>{
+    if(e.key === "Escape") closeAllSheets();
+  });
+
+  // Drag the handle down to dismiss a sheet, like a native bottom sheet
+  document.querySelectorAll(".sheet-handle").forEach(handle=>{
+    const sheet = handle.closest(".sheet");
+    const overlay = handle.closest(".overlay");
+    let startY = 0;
+    let dy = 0;
+    let dragging = false;
+
+    handle.addEventListener("pointerdown", (e)=>{
+      dragging = true;
+      startY = e.clientY;
+      dy = 0;
+      sheet.classList.add("dragging");
+      try{ handle.setPointerCapture(e.pointerId); }catch(err){ /* capture is best-effort */ }
+    });
+
+    handle.addEventListener("pointermove", (e)=>{
+      if(!dragging) return;
+      dy = Math.max(0, e.clientY - startY);
+      sheet.style.transform = `translateY(${dy}px)`;
+    });
+
+    const endDrag = ()=>{
+      if(!dragging) return;
+      dragging = false;
+      sheet.classList.remove("dragging");
+      sheet.classList.add("snapping");
+
+      if(dy > 110){
+        sheet.style.transform = `translateY(100%)`;
+        setTimeout(()=>{
+          overlay.classList.remove("open");
+          sheet.classList.remove("snapping");
+          sheet.style.transform = "";
+        }, 260);
+      }else{
+        sheet.style.transform = "";
+        setTimeout(()=> sheet.classList.remove("snapping"), 320);
+      }
+    };
+
+    handle.addEventListener("pointerup", endDrag);
+    handle.addEventListener("pointercancel", endDrag);
+  });
+
+  // Topbar button cycles straight through the palettes
+  const THEME_ORDER = ["obsidian", "aurora", "sunset", "ocean", "paper"];
+  themeCycleBtn.addEventListener("click", ()=>{
+    const current = document.documentElement.getAttribute("data-theme") || "obsidian";
+    const next = THEME_ORDER[(THEME_ORDER.indexOf(current) + 1) % THEME_ORDER.length];
+    applyTheme(next);
+    themeCycleBtn.classList.remove("spun");
+    void themeCycleBtn.offsetWidth;
+    themeCycleBtn.classList.add("spun");
+    haptic(10);
+    showToast(next.charAt(0).toUpperCase() + next.slice(1));
   });
 
   // ---------- Bill generator ----------
   let billSelectedIds = new Set();
   let billSearchQuery = "";
+  let editingBillId = null;   // set while editing an existing bill
+  let viewingBillId = null;   // set while looking at a generated bill
 
   function showBillPickerState(){
     billPickerView.style.display = "";
+    billSavedView.style.display = "none";
     billResultView.style.display = "none";
+    billTabs.style.display = "";
     billFooterBar.style.display = "";
     generateBillBtn.style.display = "";
     billResultActions.style.display = "none";
+    generateBillBtn.textContent = editingBillId ? "Save changes" : "Generate bill";
+    billSheetTitle.textContent = editingBillId ? "Edit bill" : "Create bill";
     billScrollArea.scrollTop = 0;
+  }
+
+  function showBillSavedState(){
+    billPickerView.style.display = "none";
+    billSavedView.style.display = "";
+    billResultView.style.display = "none";
+    billTabs.style.display = "";
+    billFooterBar.style.display = "none";
+    generateBillBtn.style.display = "none";
+    billResultActions.style.display = "none";
+    billSheetTitle.textContent = "Bills";
+    billScrollArea.scrollTop = 0;
+    renderBillList();
   }
 
   function showBillResultState(){
     billPickerView.style.display = "none";
+    billSavedView.style.display = "none";
     billResultView.style.display = "";
+    billTabs.style.display = "none";
     billFooterBar.style.display = "none";
     generateBillBtn.style.display = "none";
     billResultActions.style.display = "";
+    billSheetTitle.textContent = "Bill";
     billScrollArea.scrollTop = 0;
   }
 
-  function openBillSheet(){
+  function setBillTab(tab){
+    billTabs.querySelectorAll(".bill-tab").forEach(t=>{
+      t.classList.toggle("active", t.getAttribute("data-tab") === tab);
+    });
+    if(tab === "saved") showBillSavedState();
+    else showBillPickerState();
+  }
+
+  function resetBillForm(){
     billSelectedIds = new Set();
+    editingBillId = null;
+    viewingBillId = null;
     billCustomerName.value = "";
     billCouponInput.value = "";
     billSearchInput.value = "";
     billSearchQuery = "";
-    showBillPickerState();
+  }
+
+  function openBillSheet(){
+    resetBillForm();
+    savedBillsCount.textContent = bills.length;
+    setBillTab("new");
     renderBillItemList();
     billOverlay.classList.add("open");
+  }
+
+  function renderBillList(){
+    savedBillsCount.textContent = bills.length;
+
+    if(bills.length === 0){
+      billList.innerHTML = `
+        <div class="log-empty">
+          <div class="glyph">···</div>
+          <div class="msg">No bills yet.<br>Bills you generate are saved here.</div>
+        </div>`;
+      return;
+    }
+
+    const sorted = [...bills].sort((a,b)=> new Date(b.date) - new Date(a.date));
+
+    billList.innerHTML = sorted.map((b, i)=>{
+      const d = new Date(b.date);
+      const dateStr = isNaN(d) ? "" : d.toLocaleDateString("en-IN", {day:"2-digit", month:"short", year:"2-digit"});
+      const meta = [`${b.items.length} item${b.items.length === 1 ? "" : "s"}`, dateStr].filter(Boolean).join(" · ");
+      return `
+        <button class="bill-card" data-id="${b.id}" style="--i:${Math.min(i, 14)}">
+          <span class="bill-card-main">
+            <span class="bill-card-customer">${escapeHtml(b.customer || "Walk-in customer")}</span>
+            <span class="bill-card-meta">${escapeHtml(meta)}</span>
+          </span>
+          <span class="bill-card-right">
+            <span class="bill-card-total">${inr(b.total)}</span>
+            ${b.discount > 0 ? `<span class="bill-card-off">${escapeHtml(b.couponCode)} −${inr(b.discount)}</span>` : ""}
+          </span>
+        </button>`;
+    }).join("");
+
+    billList.querySelectorAll(".bill-card").forEach(card=>{
+      card.addEventListener("click", ()=> viewBill(card.getAttribute("data-id")));
+    });
+  }
+
+  function viewBill(id){
+    const bill = bills.find(b=> b.id === id);
+    if(!bill) return;
+    viewingBillId = id;
+    billPreviewImg.src = renderBillImage(bill);
+    showBillResultState();
+  }
+
+  function editBill(id){
+    const bill = bills.find(b=> b.id === id);
+    if(!bill) return;
+
+    editingBillId = id;
+    viewingBillId = null;
+    billCustomerName.value = bill.customer || "";
+    billCouponInput.value = bill.couponCode || "";
+    billSearchInput.value = "";
+    billSearchQuery = "";
+    billSelectedIds = new Set(bill.items.map(it=> it.id));
+
+    setBillTab("new");
+    renderBillItemList();
+  }
+
+  function deleteBill(id){
+    const index = bills.findIndex(b=> b.id === id);
+    if(index === -1) return;
+    const removed = bills[index];
+
+    clearBillDiscounts(id);
+    saveLog(log);
+    bills.splice(index, 1);
+    saveBills(bills);
+    renderLog();
+    haptic(20);
+
+    resetBillForm();
+    setBillTab("saved");
+
+    showToast("Bill deleted", "Undo", ()=>{
+      bills.splice(index, 0, removed);
+      applyBillDiscounts(removed);
+      saveBills(bills);
+      saveLog(log);
+      renderLog();
+      renderBillList();
+    });
   }
 
   billBtn.addEventListener("click", openBillSheet);
@@ -2287,7 +3690,13 @@
   billCouponInput.addEventListener("input", updateBillFooter);
 
   function getBillCandidates(){
-    let entries = log.filter(e=> e.type !== "Freebie" && (e.total||0) > 0);
+    // Anything already on a different bill is off-limits, so a print
+    // can never pick up two discounts.
+    let entries = log.filter(e=>
+      e.type !== "Freebie" &&
+      (e.total||0) > 0 &&
+      (!e.billId || e.billId === editingBillId)
+    );
     if(billSearchQuery.trim()){
       const q = billSearchQuery.trim().toLowerCase();
       entries = entries.filter(e=>
@@ -2415,9 +3824,25 @@
     return lines;
   }
 
-  function renderBillImage(){
-    const { items, subtotal, coupon, discount, grandTotal } = computeBillTotals();
-    const customer = billCustomerName.value.trim();
+  function renderBillImage(bill){
+    const items = bill.items;
+    const subtotal = bill.subtotal;
+    const discount = bill.discount;
+    const grandTotal = bill.total;
+    const coupon = bill.couponCode ? { code: bill.couponCode, percent: bill.couponPercent } : null;
+    const customer = bill.customer || "";
+
+    const cs = getComputedStyle(document.documentElement);
+    const themeColor = (name, fallback) => (cs.getPropertyValue(name).trim() || fallback);
+    const cBg = themeColor("--bg", "#0A0A0B");
+    const cPanelRaised = themeColor("--panel-raised", "#1D1D20");
+    const cLine = themeColor("--panel-line", "#2A2A2E");
+    const cWhite = themeColor("--white", "#F5F5F2");
+    const cWhiteDim = themeColor("--white-dim", "#C9C9C4");
+    const cMuted = themeColor("--muted", "#6E6E73");
+    const cMutedDim = themeColor("--muted-dim", "#4A4A4E");
+    const cSuccess = themeColor("--success", "#7FB88A");
+    const cAccent = themeColor("--accent", "#F0D9A6");
 
     const W = 720;
     const padX = 40;
@@ -2433,24 +3858,24 @@
     const ctx = billCanvas.getContext("2d");
 
     // background
-    ctx.fillStyle = "#0A0A0B";
+    ctx.fillStyle = cBg;
     ctx.fillRect(0, 0, W, H);
 
     let y = 44;
 
     // brand
-    ctx.fillStyle = "#6E6E73";
+    ctx.fillStyle = cMuted;
     ctx.font = "600 11px 'JetBrains Mono', monospace";
     ctx.textBaseline = "alphabetic";
     ctx.fillText("THE PRINT VAULT", padX, y);
     y += 26;
 
-    ctx.fillStyle = "#F5F5F2";
+    ctx.fillStyle = cWhite;
     ctx.font = "800 26px 'JetBrains Mono', monospace";
     ctx.fillText("Order Bill", padX, y);
     y += 20;
 
-    ctx.strokeStyle = "#2A2A2E";
+    ctx.strokeStyle = cLine;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(padX, y);
@@ -2459,11 +3884,11 @@
     y += 30;
 
     if(customer){
-      ctx.fillStyle = "#6E6E73";
+      ctx.fillStyle = cMuted;
       ctx.font = "600 10px 'JetBrains Mono', monospace";
       ctx.fillText("BILLED TO", padX, y);
       y += 22;
-      ctx.fillStyle = "#F5F5F2";
+      ctx.fillStyle = cWhite;
       ctx.font = "700 18px Inter, sans-serif";
       ctx.fillText(customer, padX, y);
       y += 74;
@@ -2471,18 +3896,18 @@
 
     // item rows
     for(const item of items){
-      ctx.fillStyle = "#1D1D20";
+      ctx.fillStyle = cPanelRaised;
       ctx.beginPath();
       ctx.roundRect(padX, y - 32, W - padX*2, 46, 10);
       ctx.fill();
 
-      ctx.fillStyle = "#F5F5F2";
+      ctx.fillStyle = cWhite;
       ctx.font = "600 14.5px Inter, sans-serif";
       const name = item.product || "Untitled";
       const truncated = ctx.measureText(name).width > 380 ? name.slice(0, 34) + "…" : name;
       ctx.fillText(truncated, padX + 16, y - 6);
 
-      ctx.fillStyle = "#F5F5F2";
+      ctx.fillStyle = cWhite;
       ctx.font = "700 15px 'JetBrains Mono', monospace";
       const priceText = inr(item.total);
       const priceWidth = ctx.measureText(priceText).width;
@@ -2492,7 +3917,7 @@
     }
 
     y += 26;
-    ctx.strokeStyle = "#2A2A2E";
+    ctx.strokeStyle = cLine;
     ctx.beginPath();
     ctx.moveTo(padX, y);
     ctx.lineTo(W - padX, y);
@@ -2500,7 +3925,7 @@
     y += 42;
 
     // subtotal
-    ctx.fillStyle = "#9A9A9E";
+    ctx.fillStyle = cWhiteDim;
     ctx.font = "500 13px Inter, sans-serif";
     ctx.fillText("Subtotal", padX, y);
     ctx.font = "600 13px 'JetBrains Mono', monospace";
@@ -2509,7 +3934,7 @@
     y += 36;
 
     if(coupon){
-      ctx.fillStyle = "#7FB88A";
+      ctx.fillStyle = cSuccess;
       ctx.font = "500 13px Inter, sans-serif";
       ctx.fillText(`Coupon ${coupon.code.toUpperCase()} (${coupon.percent}% off)`, padX, y);
       ctx.font = "600 13px 'JetBrains Mono', monospace";
@@ -2521,41 +3946,43 @@
     }
 
     // grand total
-    ctx.fillStyle = "#1D1D20";
+    ctx.fillStyle = cPanelRaised;
     ctx.beginPath();
     ctx.roundRect(padX, y - 26, W - padX*2, 52, 12);
     ctx.fill();
 
-    ctx.fillStyle = "#F5F5F2";
+    ctx.fillStyle = cWhite;
     ctx.font = "700 15px 'JetBrains Mono', monospace";
     ctx.fillText("TOTAL", padX + 18, y + 4);
 
+    ctx.fillStyle = cAccent;
     ctx.font = "800 24px 'JetBrains Mono', monospace";
     const totalText = "₹" + Number(grandTotal).toLocaleString("en-IN", {maximumFractionDigits: 2});
     ctx.fillText(totalText, W - padX - 18 - ctx.measureText(totalText).width, y + 6);
     y += 56;
 
     // payment note
-    ctx.fillStyle = "#232326";
+    ctx.fillStyle = cPanelRaised;
     ctx.beginPath();
     ctx.roundRect(padX, y, W - padX*2, noteH - 20, 12);
     ctx.fill();
 
-    ctx.fillStyle = "#F5F5F2";
+    ctx.fillStyle = cWhite;
     ctx.font = "700 14px Inter, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Pay to confirm order", W/2, y + 32);
-    ctx.fillStyle = "#9A9A9E";
+    ctx.fillStyle = cWhiteDim;
     ctx.font = "500 12px Inter, sans-serif";
     ctx.fillText("Scan the attached QR to complete payment", W/2, y + 52);
     ctx.textAlign = "left";
     y += noteH;
 
     // footer
-    ctx.fillStyle = "#4A4A4E";
+    ctx.fillStyle = cMutedDim;
     ctx.font = "500 10.5px 'JetBrains Mono', monospace";
     ctx.textAlign = "center";
-    const dateStr = new Date().toLocaleDateString("en-IN", {day:"2-digit", month:"short", year:"numeric"});
+    const billDate = new Date(bill.date);
+    const dateStr = (isNaN(billDate) ? new Date() : billDate).toLocaleDateString("en-IN", {day:"2-digit", month:"short", year:"numeric"});
     ctx.fillText(`Generated ${dateStr}`, W/2, H - 20);
     ctx.textAlign = "left";
 
@@ -2563,24 +3990,76 @@
   }
 
   generateBillBtn.addEventListener("click", ()=>{
-    const { items } = computeBillTotals();
+    const { items, subtotal, coupon, discount, grandTotal } = computeBillTotals();
     if(items.length === 0){
       showToast("Select at least one print");
       return;
     }
-    const dataUrl = renderBillImage();
-    billPreviewImg.src = dataUrl;
+
+    const existing = editingBillId ? bills.find(b=> b.id === editingBillId) : null;
+    const bill = {
+      id: existing ? existing.id : ("bill" + Date.now().toString(36) + Math.random().toString(36).slice(2,6)),
+      date: existing ? existing.date : new Date().toISOString(),
+      customer: billCustomerName.value.trim(),
+      couponCode: coupon ? coupon.code.toUpperCase() : "",
+      couponPercent: coupon ? coupon.percent : 0,
+      items: items.map(e=> ({ id: e.id, product: e.product || "Untitled", total: e.total || 0 })),
+      subtotal,
+      discount,
+      total: grandTotal
+    };
+
+    // Re-point the discount at exactly the prints on this bill
+    clearBillDiscounts(bill.id);
+    applyBillDiscounts(bill);
+    saveLog(log);
+
+    if(existing){
+      bills[bills.indexOf(existing)] = bill;
+    }else{
+      bills.push(bill);
+    }
+    saveBills(bills);
+    renderLog();
+    haptic([14, 40, 14]);
+
+    editingBillId = null;
+    viewingBillId = bill.id;
+    billPreviewImg.src = renderBillImage(bill);
     showBillResultState();
+    showToast(existing ? "Bill updated" : "Bill saved");
+  });
+
+  billTabs.querySelectorAll(".bill-tab").forEach(tab=>{
+    tab.addEventListener("click", ()=>{
+      const which = tab.getAttribute("data-tab");
+      if(which === "new" && !editingBillId) resetBillForm();
+      setBillTab(which);
+      if(which === "new") renderBillItemList();
+      haptic(8);
+    });
+  });
+
+  editBillBtn.addEventListener("click", ()=>{
+    if(viewingBillId) editBill(viewingBillId);
+  });
+
+  deleteBillBtn.addEventListener("click", ()=>{
+    if(viewingBillId) deleteBill(viewingBillId);
   });
 
   backToBillPicker.addEventListener("click", ()=>{
-    showBillPickerState();
+    resetBillForm();
+    setBillTab("saved");
   });
 
   downloadBillBtn.addEventListener("click", ()=>{
+    const bill = bills.find(b=> b.id === viewingBillId);
+    const customer = bill ? (bill.customer || "") : "";
     const link = document.createElement("a");
-    const custPart = billCustomerName.value.trim() ? "-" + billCustomerName.value.trim().replace(/[^a-z0-9]+/gi, "-").toLowerCase() : "";
-    link.download = `bill${custPart}-${new Date().toISOString().slice(0,10)}.png`;
+    const custPart = customer ? "-" + customer.replace(/[^a-z0-9]+/gi, "-").toLowerCase() : "";
+    const stamp = (bill && !isNaN(new Date(bill.date))) ? new Date(bill.date) : new Date();
+    link.download = `bill${custPart}-${stamp.toISOString().slice(0,10)}.png`;
     link.href = billPreviewImg.src;
     document.body.appendChild(link);
     link.click();
@@ -2590,10 +4069,11 @@
 
   // ---------- CSV export ----------
   function toCsv(entries){
-    const headers = ["Date","Product","Customer","Filament(g)","Time(hrs)","FilamentCost","PowerCost","LabourCost","PackagingCost","ProfitCost","Total"];
+    const headers = ["Date","Product","Customer","Filament(g)","Time(hrs)","FilamentCost","PowerCost","LabourCost","PackagingCost","ProfitCost","ListPrice","BillDiscount","Total"];
     const rows = entries.map(e=>[
       e.date, e.product, e.customer, e.weight, e.time,
-      round2(e.filamentCost), round2(e.powerCost), round2(e.labourCost), round2(e.packagingCost||0), round2(e.profitCost), round2(e.total)
+      round2(e.filamentCost), round2(e.powerCost), round2(e.labourCost), round2(e.packagingCost||0), round2(e.profitCost),
+      round2(e.total), round2(e.billDiscount||0), round2(effectiveTotal(e))
     ]);
     const escape = v => {
       const s = String(v ?? "");
@@ -2624,6 +4104,17 @@
   // ---------- Init ----------
   renderPrice();
   renderLog();
+
+  // Sync comes last and never throws into the setup above, so the app stays
+  // fully usable even when the Firebase SDK can't load.
+  if(syncCode){
+    try{
+      connectSync(syncCode);
+    }catch(err){
+      console.error("Sync init failed", err);
+      setSyncStatus("error");
+    }
+  }
 
 })();
 </script>
