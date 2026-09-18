@@ -2,10 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0A0A0B">
-<title>Print Ledger — Pricer</title>
+<title>Print Ledger · The Print Vault</title>
 <meta name="description" content="Price your 3D prints. Track what you've sold.">
+<meta property="og:title" content="Print Ledger">
+<meta property="og:description" content="Price your 3D prints. Track what you've sold.">
+<meta property="og:type" content="website">
 
 <script>
 (function(){
@@ -22,16 +25,30 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
   :root{
-    --mono: 'JetBrains Mono', ui-monospace, monospace;
-    --sans: 'Inter', system-ui, sans-serif;
+    --mono: 'Geist Mono', ui-monospace, 'JetBrains Mono', monospace;
+    --sans: 'Geist', system-ui, sans-serif;
 
+    /* Layer scale - every z-index in this file comes from here */
+    --z-topbar: 30;
+    --z-dock: 40;
+    --z-overlay: 50;
+    --z-toast: 60;
+
+    /* Print textures: 45-degree line infill, and extruded layer striations */
+    --infill: rgba(255,255,255,0.030);
+    --layer: rgba(255,255,255,0.055);
+    --plate: rgba(255,255,255,0.045);
   }
 
   /* ---------- Themes ---------- */
+  :root, [data-theme="obsidian"], [data-theme="aurora"],
+  [data-theme="sunset"], [data-theme="ocean"]{ color-scheme: dark; }
+  [data-theme="paper"]{ color-scheme: light; }
+
   :root, [data-theme="obsidian"]{
     --bg: #0A0A0B;
     --bg-glow: radial-gradient(120% 55% at 50% -10%, rgba(240,217,166,0.07), transparent 60%);
@@ -40,8 +57,8 @@
     --panel-line: #2A2A2E;
     --white: #F5F5F2;
     --white-dim: #C9C9C4;
-    --muted: #6E6E73;
-    --muted-dim: #4A4A4E;
+    --muted: #9A9AA0;
+    --muted-dim: #888890;
     --danger: #E85A4C;
     --success: #7FB88A;
     --accent: #F0D9A6;
@@ -65,8 +82,8 @@
     --panel-line: #2E2C42;
     --white: #F1EEFB;
     --white-dim: #CBC5E8;
-    --muted: #8681A6;
-    --muted-dim: #524C72;
+    --muted: #9F9AC2;
+    --muted-dim: #8681A6;
     --danger: #F2607A;
     --success: #5FE0B0;
     --accent: #8B7CF6;
@@ -90,9 +107,9 @@
     --panel-line: #3D2E22;
     --white: #FBF1E8;
     --white-dim: #E3C7AF;
-    --muted: #A38268;
-    --muted-dim: #6B5240;
-    --danger: #F2564A;
+    --muted: #BE9A7E;
+    --muted-dim: #9C7E66;
+    --danger: #FF6E60;
     --success: #B7C67D;
     --accent: #FF9A56;
     --accent-2: #FF5E7E;
@@ -115,8 +132,8 @@
     --panel-line: #1F3B4D;
     --white: #EAF6FB;
     --white-dim: #B9DCE8;
-    --muted: #5F8A9C;
-    --muted-dim: #3A5A69;
+    --muted: #82ABBD;
+    --muted-dim: #6B93A6;
     --danger: #FF6B6B;
     --success: #5FE0C0;
     --accent: #33C7F2;
@@ -140,10 +157,10 @@
     --panel-line: #E2DFD5;
     --white: #1A1A18;
     --white-dim: #4A4944;
-    --muted: #8C887E;
-    --muted-dim: #B7B3A8;
+    --muted: #64615A;
+    --muted-dim: #74716A;
     --danger: #C0392B;
-    --success: #2E7D4F;
+    --success: #246B42;
     --accent: #2657D6;
     --accent-2: #7A3FF2;
     --accent-ink: #FFFFFF;
@@ -153,6 +170,9 @@
     --success-glow: rgba(46,125,79,0.22);
     --hover-wash: rgba(20,18,10,0.035);
     --glass: rgba(255,255,255,0.86);
+    --infill: rgba(26,24,16,0.040);
+    --layer: rgba(26,24,16,0.055);
+    --plate: rgba(26,24,16,0.05);
     --shadow-elev: 0 24px 48px -28px rgba(30,25,15,0.18), 0 1px 0 rgba(255,255,255,0.6) inset;
     --shadow-tight: 0 10px 24px -16px rgba(30,25,15,0.14);
   }
@@ -164,7 +184,10 @@
 
   html, body{
     background-color: var(--bg);
-    background-image: var(--bg-glow);
+    /* ambient glow over 45-degree line infill, the slicer default pattern */
+    background-image:
+      var(--bg-glow),
+      repeating-linear-gradient(45deg, var(--infill) 0 1px, transparent 1px 13px);
     background-attachment: fixed;
     color: var(--white);
     font-family: var(--sans);
@@ -172,8 +195,47 @@
     overscroll-behavior-y: none;
   }
 
+  button, a, .switch, .filter-chip, .quick-chip, .theme-swatch{
+    touch-action: manipulation;
+  }
+
+  /* Skip link - keyboard users reach the form without tabbing the whole chrome */
+  .skip-link{
+    position: absolute;
+    left: 12px;
+    top: -60px;
+    z-index: 100;
+    background: var(--accent);
+    color: var(--accent-ink);
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: top .18s ease;
+  }
+  .skip-link:focus{ top: 12px; }
+
+  /* Headings carry meaning for assistive tech, not size; the component sets scale */
+  h1, h2, h3{
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    text-wrap: balance;
+  }
+
+  .sr-only{
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   body{
-    min-height: 100vh;
     min-height: 100dvh;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
@@ -214,13 +276,41 @@
     max-width: 640px;
     margin: 0 auto;
     padding: 0 20px 150px;
-    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Laptop: the phone column becomes a two-lane workspace with the quote
+     parked beside the form instead of scrolling away above it. */
+  @media (min-width: 1024px){
+    .app{
+      max-width: 1212px;
+      padding: 0 24px 72px 116px;
+    }
+    .stagger{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 392px;
+      gap: 28px;
+      align-items: start;
+    }
+    .form-panel{ order: 1; }
+    .quote-lane{
+      order: 2;
+      position: sticky;
+      top: 104px;
+    }
+    .readout{ margin-bottom: 0; }
+    .topbar{ padding: 26px 0 18px; }
+    .field-row{ gap: 16px; }
+  }
+
+  @media (min-width: 1360px){
+    .stagger{ grid-template-columns: minmax(0, 1fr) 420px; gap: 34px; }
   }
 
   .topbar{
     position: sticky;
     top: 0;
-    z-index: 30;
+    z-index: var(--z-topbar);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -299,7 +389,7 @@
     left: 50%;
     bottom: calc(20px + env(safe-area-inset-bottom));
     transform: translateX(-50%);
-    z-index: 40;
+    z-index: var(--z-dock);
     display: flex;
     gap: 4px;
     padding: 6px;
@@ -311,10 +401,6 @@
     -webkit-backdrop-filter: blur(20px) saturate(1.4);
     transition: transform .4s cubic-bezier(.22,1,.36,1), opacity .3s ease;
     animation: fadeUp .6s cubic-bezier(.22,1,.36,1) .3s backwards;
-  }
-  .dock.tucked{
-    transform: translateX(-50%) translateY(170%);
-    opacity: 0;
   }
   .dock-btn{
     display: flex;
@@ -344,6 +430,31 @@
   }
   .dock-label{ display: none; }
   @media (min-width: 360px){ .dock-label{ display: inline; } }
+
+  /* Laptop: the bottom dock stands up into a rail in the left gutter.
+     left pins it to the centred container's edge, never past 24px. */
+  @media (min-width: 1024px){
+    .dock{
+      flex-direction: column;
+      gap: 6px;
+      top: 104px;
+      bottom: auto;
+      left: max(24px, calc(50% - 606px));
+      transform: none;
+      border-radius: 22px;
+      padding: 10px;
+      animation: none;
+    }
+    .dock-btn{
+      width: 52px;
+      height: 52px;
+      padding: 0;
+      justify-content: center;
+      border-radius: 16px;
+    }
+    .dock-label{ display: none; }
+    .dock-btn svg{ width: 20px; height: 20px; }
+  }
 
   .icon-badge-dot{
     position: absolute;
@@ -393,19 +504,35 @@
     z-index: 0;
   }
 
-  /* Blueprint grid — faint engineering paper under the number */
+  /* Build plate: square bed grid, with extruded layer striations over it */
   .readout .grid-lines{
     position: absolute;
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    opacity: .5;
     background-image:
-      linear-gradient(var(--panel-line) 1px, transparent 1px),
-      linear-gradient(90deg, var(--panel-line) 1px, transparent 1px);
-    background-size: 26px 26px;
-    -webkit-mask-image: radial-gradient(120% 80% at 15% 0%, #000 20%, transparent 72%);
-    mask-image: radial-gradient(120% 80% at 15% 0%, #000 20%, transparent 72%);
+      repeating-linear-gradient(180deg, var(--layer) 0 1px, transparent 1px 6px),
+      linear-gradient(var(--plate) 1px, transparent 1px),
+      linear-gradient(90deg, var(--plate) 1px, transparent 1px);
+    background-size: 100% 6px, 34px 34px, 34px 34px;
+    -webkit-mask-image: linear-gradient(190deg, #000 8%, transparent 78%);
+    mask-image: linear-gradient(190deg, #000 8%, transparent 78%);
+  }
+
+  /* Isometric layer stack: what the quote is actually paying for */
+  .readout .layer-stack{
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-46%);
+    width: 122px; height: 122px;
+    color: var(--accent);
+    opacity: .2;
+    pointer-events: none;
+    z-index: 0;
+  }
+  @media (max-width: 400px){
+    .readout .layer-stack{ width: 104px; height: 104px; right: 6px; opacity: .15; }
   }
 
   /* Corner registration marks */
@@ -422,12 +549,14 @@
   .readout .corner.bl{ bottom: 12px; left: 12px; border-right: 0; border-top: 0; border-radius: 0 0 0 4px; }
   .readout .corner.br{ bottom: 12px; right: 12px; border-left: 0; border-top: 0; border-radius: 0 0 4px 0; }
 
+  /* Nozzle pass: a hot-end traverse across the plate */
   .readout .sheen{
     position: absolute;
     top: -60%; left: 0;
-    width: 70px; height: 220%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent);
-    animation: sheenSweep 9s ease-in-out 2s infinite;
+    width: 54px; height: 220%;
+    background: linear-gradient(90deg, transparent, var(--accent-glow) 45%, transparent);
+    opacity: .55;
+    animation: sheenSweep 11s ease-in-out 3s infinite;
     pointer-events: none;
     z-index: 1;
   }
@@ -563,6 +692,122 @@
     width: auto;
     padding: 10px 14px;
     font-size: 10px;
+  }
+
+  /* ---------- Month panel (laptop only) ---------- */
+  .recent-panel{
+    display: none;
+    margin-top: 20px;
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: var(--shadow-tight);
+  }
+  @media (min-width: 1024px){ .recent-panel{ display: block; } }
+
+  .recent-head{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .recent-head h2{
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .recent-total{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 19px;
+    color: var(--white);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Filament spool gauge */
+  .spool-row{
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-line);
+    margin-bottom: 16px;
+  }
+  .spool{
+    width: 38px; height: 38px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: conic-gradient(var(--accent) 0turn, var(--accent-2) 1turn);
+    box-shadow: 0 0 0 1px var(--panel-line), 0 6px 16px -8px var(--accent-glow);
+  }
+  .spool i{
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: var(--panel-raised);
+    box-shadow: inset 0 0 0 1px var(--panel-line);
+  }
+  .spool-meta{ display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .spool-value{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--white);
+    font-variant-numeric: tabular-nums;
+  }
+  .spool-label{
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .recent-list{ display: flex; flex-direction: column; }
+  .recent-item{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 2px;
+    border-top: 1px solid var(--panel-line);
+  }
+  .recent-item:first-child{ border-top: 0; }
+  .recent-item-main{ flex: 1; min-width: 0; }
+  .recent-item-name, .recent-item-sub{ display: block; }
+  .recent-item-name{
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--white-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .recent-item-sub{
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .recent-item-price{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 12.5px;
+    color: var(--white);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .recent-empty{
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    padding: 6px 2px;
   }
 
   /* ---------- Form ---------- */
@@ -874,7 +1119,7 @@
     display: none;
     align-items: flex-end;
     justify-content: center;
-    z-index: 50;
+    z-index: var(--z-overlay);
   }
   .overlay.open{ display: flex; }
 
@@ -902,6 +1147,7 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 18px 20px calc(24px + env(safe-area-inset-bottom));
   }
 
@@ -931,12 +1177,20 @@
     .sheet{ border-radius: 20px; max-height: 80vh; padding-top: 16px; }
     .sheet-handle{ display: none; }
   }
+  @media (min-width: 1024px){
+    .sheet{ max-width: 720px; max-height: 84vh; border-radius: 24px; }
+    .sheet-header{ padding: 6px 26px 16px; }
+    .sheet-scroll{ padding: 20px 26px 26px; }
+    .bill-scroll-area{ padding: 20px 26px 16px; }
+    .bill-sticky-footer, .bill-tabs{ padding-left: 26px; padding-right: 26px; }
+  }
 
   /* Bill sheet: item list scrolls, generate bar pinned to the bottom */
   .bill-scroll-area{
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 18px 20px 16px;
   }
   .bill-sticky-footer{
@@ -1204,7 +1458,7 @@
     font-size: 11px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    transition: all .15s ease;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
   }
   .filter-chip:hover{ color: var(--white-dim); }
   .filter-chip.active{
@@ -1354,13 +1608,15 @@
     padding: 3px 7px;
     border-radius: 5px;
     border: 1px solid currentColor;
-    opacity: .9;
+
   }
   .status-pill.paid{ color: var(--success); }
   .status-pill.due{ color: var(--danger); }
   .status-pill.done{ color: var(--accent); }
   .status-pill.queued{ color: var(--muted); }
   .status-pill.billed{ color: var(--accent-2); }
+  .status-pill.spec{ color: var(--muted); border-color: var(--panel-line); text-transform: none; }
+  .status-pill.gain{ color: var(--success); border-color: var(--panel-line); }
 
   .log-row{
     padding: 13px 14px;
@@ -1551,7 +1807,7 @@
     flex-shrink: 0;
     display: flex; align-items:center; justify-content:center;
     color: transparent;
-    transition: all .15s ease;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease;
   }
   .bill-checkbox svg{ width: 13px; height: 13px; }
   .bill-item-row.checked .bill-checkbox{
@@ -1720,7 +1976,7 @@
     font-family: var(--mono);
     font-size: 12.5px;
     font-weight: 600;
-    z-index: 100;
+    z-index: var(--z-toast);
     opacity: 0;
     pointer-events: none;
     transition: opacity .25s ease, transform .35s cubic-bezier(.22,1,.36,1);
@@ -1761,66 +2017,102 @@
 </head>
 <body>
 
+<a class="skip-link" href="#pricerForm">Skip to pricer</a>
+
 <div class="app">
 
-  <div class="topbar">
+  <header class="topbar">
     <div class="brand">
-      <span class="brand-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7l9 5 9-5-9-5z"></path><path d="M3 12l9 5 9-5"></path><path d="M3 17l9 5 9-5"></path></svg>
+      <span class="brand-mark" aria-hidden="true">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 3 7l9 5 9-5-9-5z"></path><path d="M3 12l9 5 9-5"></path><path d="M3 17l9 5 9-5"></path></svg>
       </span>
       <span class="brand-text">
-        <span class="eyebrow">The Print Vault</span>
-        <span class="name">Print Ledger</span>
+        <span class="eyebrow" translate="no">The Print Vault</span>
+        <h1 class="name" translate="no">Print Ledger</h1>
       </span>
     </div>
     <button class="theme-cycle" id="themeCycleBtn" aria-label="Switch theme">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path></svg>
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path></svg>
     </button>
-  </div>
+  </header>
 
-  <div class="stagger">
+  <main class="stagger">
+
+   <aside class="quote-lane">
 
     <!-- Price readout -->
-    <section class="readout">
-      <span class="grid-lines"></span>
-      <span class="sheen"></span>
-      <span class="corner tl"></span><span class="corner tr"></span>
-      <span class="corner bl"></span><span class="corner br"></span>
+    <section class="readout" aria-labelledby="quoteHeading">
+      <span class="grid-lines" aria-hidden="true"></span>
+      <span class="sheen" aria-hidden="true"></span>
+      <span class="corner tl" aria-hidden="true"></span><span class="corner tr" aria-hidden="true"></span>
+      <span class="corner bl" aria-hidden="true"></span><span class="corner br" aria-hidden="true"></span>
+      <svg class="layer-stack" aria-hidden="true" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round">
+        <path d="M60 76.7 L106 96 L60 115.3 L14 96 Z"></path>
+        <path d="M60 65.5 L104 84 L60 102.5 L16 84 Z"></path>
+        <path d="M60 55.2 L100 72 L60 88.8 L20 72 Z"></path>
+        <path d="M60 45.7 L94 60 L60 74.3 L26 60 Z"></path>
+        <path d="M60 35.4 L90 48 L60 60.6 L30 48 Z"></path>
+        <path d="M60 22.6 L92 36 L60 49.4 L28 36 Z"></path>
+        <path d="M60 8 L98 24 L60 40 L22 24 Z"></path>
+      </svg>
       <div class="readout-label">
-        <span>Quoted price</span>
-        <span class="part-name" id="partNameEcho">—</span>
+        <h2 id="quoteHeading">Quoted price</h2>
+        <span class="part-name" id="partNameEcho">No product yet</span>
       </div>
-      <div class="price-value" id="priceValueWrap"><span class="currency">₹</span><span id="priceDisplay">0</span></div>
+      <div class="price-value" id="priceValueWrap" aria-live="polite"><span class="currency">₹</span><span id="priceDisplay">0</span></div>
       <div class="readout-flags" id="readoutFlags"></div>
       <div class="readout-sub" id="readoutSub">Add weight and time to price this job</div>
 
       <div class="readout-foot">
-        <span>The Print Vault</span>
-        <span class="dash"></span>
+        <span translate="no">The Print Vault</span>
+        <span class="dash" aria-hidden="true"></span>
         <span id="readoutStamp">Ready</span>
       </div>
 
       <div class="price-override-row" id="priceOverrideRow" style="display:none;">
-        <input type="number" id="priceOverrideInput" inputmode="decimal" min="0" step="1" placeholder="Custom price">
-        <button class="pill-btn" id="clearOverrideBtn">Use calculated price</button>
+        <label class="sr-only" for="priceOverrideInput">Custom price</label>
+        <input type="number" id="priceOverrideInput" inputmode="decimal" min="0" step="1" placeholder="Custom price…">
+        <button class="pill-btn" id="clearOverrideBtn">Use calculated</button>
       </div>
     </section>
 
+    <!-- Laptop only: the empty gutter earns its keep -->
+    <section class="recent-panel" aria-labelledby="recentHeading">
+      <div class="recent-head">
+        <h2 id="recentHeading">This month</h2>
+        <span class="recent-total" id="recentMonthTotal">₹0</span>
+      </div>
+      <div class="spool-row">
+        <span class="spool" aria-hidden="true"><i></i></span>
+        <span class="spool-meta">
+          <span class="spool-value" id="recentFilament">0g</span>
+          <span class="spool-label">filament extruded</span>
+        </span>
+        <span class="spool-meta">
+          <span class="spool-value" id="recentHours">0h</span>
+          <span class="spool-label">plate time</span>
+        </span>
+      </div>
+      <div class="recent-list" id="recentList"></div>
+    </section>
+
+   </aside>
+
     <!-- Input form -->
-    <section class="form-panel">
+    <section class="form-panel" id="pricerForm" aria-labelledby="jobHeading">
       <div class="section-head">
-        <span class="idx">01</span>
-        <span class="txt">Print job</span>
-        <span class="rule"></span>
+        <span class="idx" aria-hidden="true">01</span>
+        <h2 class="txt" id="jobHeading">Print job</h2>
+        <span class="rule" aria-hidden="true"></span>
       </div>
 
       <div class="field">
         <label for="productName">Product name</label>
-        <input type="text" id="productName" placeholder="e.g. Articulated dragon">
+        <input type="text" id="productName" name="productName" autocomplete="off" placeholder="e.g. Articulated dragon…">
       </div>
       <div class="field">
         <label for="customerName">Customer name</label>
-        <input type="text" id="customerName" placeholder="e.g. Rakesh">
+        <input type="text" id="customerName" name="customerName" autocomplete="name" placeholder="e.g. Rakesh…">
       </div>
       <div class="field-row">
         <div class="field numeric">
@@ -1850,15 +2142,15 @@
       </div>
 
       <div class="section-head" style="margin-top:24px;">
-        <span class="idx">02</span>
-        <span class="txt">Adjustments</span>
-        <span class="rule"></span>
+        <span class="idx" aria-hidden="true">02</span>
+        <h2 class="txt">Adjustments</h2>
+        <span class="rule" aria-hidden="true"></span>
       </div>
 
       <div class="field">
         <label for="couponInput">Coupon code (optional)</label>
-        <input type="text" id="couponInput" placeholder="e.g. FAMILY" autocapitalize="characters">
-        <div class="coupon-status" id="couponStatus"></div>
+        <input type="text" id="couponInput" name="couponCode" autocomplete="off" spellcheck="false" placeholder="e.g. FAMILY…" autocapitalize="characters">
+        <div class="coupon-status" id="couponStatus" aria-live="polite"></div>
       </div>
 
       <div class="option-grid">
@@ -1879,40 +2171,40 @@
       </div>
 
       <button class="save-btn" id="saveBtn" disabled>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
         <span id="saveBtnLabel">Log this sale</span>
       </button>
-      <div class="save-hint" id="saveHint">Saved to your ledger</div>
+      <div class="save-hint" id="saveHint" aria-live="polite">Saved to your ledger</div>
     </section>
 
-  </div>
+  </main>
 
 </div>
 
 <!-- Bottom dock -->
 <nav class="dock" id="dock">
   <button class="dock-btn" id="settingsBtn" aria-label="Pricing settings">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
     <span class="icon-badge-dot" id="topbarSyncDot" style="display:none;"></span>
   </button>
   <button class="dock-btn" id="billBtn" aria-label="Create bill">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16v18l-3-2-2 2-2-2-2 2-2-2-2 2-3-2z"></path><line x1="8" y1="8" x2="16" y2="8"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="16" x2="12" y2="16"></line></svg>
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3h16v18l-3-2-2 2-2-2-2 2-2-2-2 2-3-2z"></path><line x1="8" y1="8" x2="16" y2="8"></line><line x1="8" y1="12" x2="16" y2="12"></line><line x1="8" y1="16" x2="12" y2="16"></line></svg>
     <span class="dock-label">Bill</span>
   </button>
   <button class="dock-btn primary" id="logBtn" aria-label="Sold prints log">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v16a1 1 0 0 1-1.45.9L12 19l-3.55 1.9A1 1 0 0 1 7 20V4a2 2 0 0 1 2-2z"></path><line x1="9" y1="8" x2="15" y2="8"></line><line x1="9" y1="12" x2="15" y2="12"></line></svg>
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v16a1 1 0 0 1-1.45.9L12 19l-3.55 1.9A1 1 0 0 1 7 20V4a2 2 0 0 1 2-2z"></path><line x1="9" y1="8" x2="15" y2="8"></line><line x1="9" y1="12" x2="15" y2="12"></line></svg>
     <span class="dock-label">Ledger</span>
   </button>
 </nav>
 
 <!-- Settings Sheet -->
-<div class="overlay" id="settingsOverlay">
+<div class="overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
   <div class="sheet">
     <div class="sheet-handle"><i></i></div>
     <div class="sheet-header">
-      <span class="sheet-title">Pricing settings</span>
+      <h2 class="sheet-title" id="settingsTitle">Pricing settings</h2>
       <button class="sheet-close" id="closeSettings" aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </div>
 
@@ -1923,28 +2215,28 @@
       <div class="theme-grid" id="themeGrid">
         <button class="theme-swatch" data-theme="obsidian" aria-label="Obsidian theme">
           <span class="theme-swatch-preview" style="background:linear-gradient(135deg,#0A0A0B,#F0D9A6);"></span>
-          <span class="theme-swatch-label">Obsidian</span>
+          <span class="theme-swatch-label">Carbon</span>
         </button>
         <button class="theme-swatch" data-theme="aurora" aria-label="Aurora theme">
           <span class="theme-swatch-preview" style="background:linear-gradient(135deg,#0B0B16,#8B7CF6);"></span>
-          <span class="theme-swatch-label">Aurora</span>
+          <span class="theme-swatch-label">Galaxy</span>
         </button>
         <button class="theme-swatch" data-theme="sunset" aria-label="Sunset theme">
           <span class="theme-swatch-preview" style="background:linear-gradient(135deg,#150F0A,#FF9A56);"></span>
-          <span class="theme-swatch-label">Sunset</span>
+          <span class="theme-swatch-label">Ember</span>
         </button>
         <button class="theme-swatch" data-theme="ocean" aria-label="Ocean theme">
           <span class="theme-swatch-preview" style="background:linear-gradient(135deg,#08121A,#33C7F2);"></span>
-          <span class="theme-swatch-label">Ocean</span>
+          <span class="theme-swatch-label">Glacier</span>
         </button>
         <button class="theme-swatch" data-theme="paper" aria-label="Paper theme">
           <span class="theme-swatch-preview" style="background:linear-gradient(135deg,#F6F5F1,#2657D6);"></span>
-          <span class="theme-swatch-label">Paper</span>
+          <span class="theme-swatch-label">Natural</span>
         </button>
       </div>
     </div>
 
-    <div class="settings-note">These rates apply to every quote. Power rate defaults to a high-end Mangalore commercial tariff — adjust to match your actual bill.</div>
+    <div class="settings-note">These rates apply to every quote. Power rate defaults to a high-end Mangalore commercial tariff. Adjust it to match your actual bill.</div>
 
     <div class="field numeric">
       <label for="rateFilament">Filament cost</label>
@@ -2005,7 +2297,7 @@
       <div class="settings-note" id="syncNote">Set a sync code on this device, then enter the same code on your other device to keep your data in step. Anyone with the code can access your data, so keep it private.</div>
       <div class="field">
         <label for="syncCodeInput">Sync code</label>
-        <input type="text" id="syncCodeInput" placeholder="e.g. NIHAL2026" autocapitalize="characters">
+        <input type="text" id="syncCodeInput" placeholder="e.g. NIHAL2026…" autocapitalize="characters">
       </div>
       <button class="save-btn" id="connectSyncBtn">Connect</button>
       <button class="pill-btn" id="disconnectSyncBtn" style="width:100%; margin-top:10px; display:none; color: var(--danger);">Disconnect sync</button>
@@ -2018,7 +2310,7 @@
       <div class="field-row" style="margin-top:14px;">
         <div class="field">
           <label for="newCouponCode">Code</label>
-          <input type="text" id="newCouponCode" placeholder="e.g. DIWALI" autocapitalize="characters">
+          <input type="text" id="newCouponCode" placeholder="e.g. DIWALI…" autocapitalize="characters">
         </div>
         <div class="field numeric">
           <label for="newCouponPercent">Discount</label>
@@ -2036,13 +2328,13 @@
 </div>
 
 <!-- Log Sheet -->
-<div class="overlay" id="logOverlay">
+<div class="overlay" id="logOverlay" role="dialog" aria-modal="true" aria-labelledby="logTitle">
   <div class="sheet">
     <div class="sheet-handle"><i></i></div>
     <div class="sheet-header">
-      <span class="sheet-title">Sold prints</span>
+      <h2 class="sheet-title" id="logTitle">Sold prints</h2>
       <button class="sheet-close" id="closeLog" aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </div>
 
@@ -2083,14 +2375,14 @@
 
     <div class="log-toolbar">
       <button class="pill-btn" id="exportBtn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         Export CSV
       </button>
     </div>
 
     <div class="search-wrap">
-      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-      <input type="text" id="searchInput" placeholder="Search customer or product">
+      <svg aria-hidden="true" class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="searchInput" placeholder="Search customer or product…">
     </div>
 
     <div class="filter-row" id="filterRow">
@@ -2115,13 +2407,13 @@
 </div>
 
 <!-- Bill Generator Sheet -->
-<div class="overlay" id="billOverlay">
+<div class="overlay" id="billOverlay" role="dialog" aria-modal="true" aria-labelledby="billSheetTitle">
   <div class="sheet">
     <div class="sheet-handle"><i></i></div>
     <div class="sheet-header">
-      <span class="sheet-title" id="billSheetTitle">Create bill</span>
+      <h2 class="sheet-title" id="billSheetTitle">Create bill</h2>
       <button class="sheet-close" id="closeBill" aria-label="Close">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
       </button>
     </div>
 
@@ -2138,18 +2430,18 @@
       <div id="billPickerView">
         <div class="field">
           <label for="billCustomerName">Customer name</label>
-          <input type="text" id="billCustomerName" placeholder="e.g. Rakesh">
+          <input type="text" id="billCustomerName" placeholder="e.g. Rakesh…">
         </div>
 
         <div class="field">
           <label for="billCouponInput">Coupon code (optional)</label>
-          <input type="text" id="billCouponInput" placeholder="e.g. FAMILY" autocapitalize="characters">
+          <input type="text" id="billCouponInput" placeholder="e.g. FAMILY…" autocapitalize="characters">
           <div class="coupon-status" id="billCouponStatus"></div>
         </div>
 
         <div class="search-wrap">
-          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" id="billSearchInput" placeholder="Search items to add">
+          <svg aria-hidden="true" class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="billSearchInput" placeholder="Search items to add…">
         </div>
 
         <div class="settings-note" style="margin-bottom:10px;">Select the prints to include on this bill.</div>
@@ -2158,7 +2450,7 @@
 
       <div id="billResultView" style="display:none;">
         <canvas id="billCanvas" style="display:none;"></canvas>
-        <img id="billPreviewImg" alt="Bill preview" style="width:100%; border-radius:14px; border:1px solid var(--panel-line);">
+        <img id="billPreviewImg" width="720" height="600" alt="Generated bill, showing each print and the order total" style="width:100%; border-radius:14px; border:1px solid var(--panel-line);">
       </div>
     </div>
 
@@ -2173,11 +2465,11 @@
         <button class="save-btn" id="downloadBillBtn">Download image</button>
         <div class="log-detail-actions">
           <button class="pill-btn" id="editBillBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg>
             Edit
           </button>
           <button class="pill-btn" id="deleteBillBtn" style="color: var(--danger);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
             Delete
           </button>
         </div>
@@ -2187,7 +2479,7 @@
   </div>
 </div>
 
-<div class="toast" id="toast">
+<div class="toast" id="toast" role="status" aria-live="polite">
   <span id="toastMsg"></span>
   <button class="toast-action" id="toastAction" hidden></button>
 </div>
@@ -2203,7 +2495,7 @@
   const defaultSettings = {
     filamentCostPerKg: 1200,  // ₹ per kg
     printerWatts: 220,       // high-end draw for an FDM printer under load incl. bed heating
-    electricityRate: 9.5,    // ₹ per kWh — high-end Mangalore/MESCOM commercial-leaning tariff
+    electricityRate: 9.5,    // ₹ per kWh - high-end Mangalore/MESCOM commercial-leaning tariff
     labourRate: 40,          // ₹ per hour
     packagingCost: 0,        // ₹ per order, flat
     profitPercent: 35        // %
@@ -2319,7 +2611,7 @@
   let applyingRemoteUpdate = false; // guard to avoid re-pushing data we just pulled
 
   function sanitizeSyncCode(raw){
-    // Firebase RTDB paths can't contain . # $ [ ] / — strip anything unsafe, keep it simple
+    // Firebase RTDB paths can't contain . # $ [ ] / - strip anything unsafe, keep it simple
     return (raw || "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
   }
 
@@ -2342,7 +2634,7 @@
   }
 
   // The SDK is loaded from a CDN, so it may simply not be there (offline,
-  // blocked, opened from a file). Sync is optional — the app must still run.
+  // blocked, opened from a file). Sync is optional - the app must still run.
   function firebaseAvailable(){
     return typeof firebase !== "undefined" && typeof firebase.initializeApp === "function";
   }
@@ -2353,7 +2645,7 @@
     try{
       syncApp = firebase.initializeApp(firebaseConfig);
     }catch(e){
-      // already initialized (hot reload scenarios) — reuse existing app
+      // already initialized (hot reload scenarios) - reuse existing app
       try{ syncApp = firebase.app(); }catch(err){ return false; }
     }
     return !!syncApp;
@@ -2391,7 +2683,7 @@
       const remote = snapshot.val();
       setSyncStatus("connected");
       if(!remote){
-        // Nothing on the server yet for this code — seed it with what's on this device.
+        // Nothing on the server yet for this code - seed it with what's on this device.
         pushToSync();
         return;
       }
@@ -2456,7 +2748,7 @@
     }
   }
 
-  const SEED_ENTRIES = []; // cleared — real sales data must never be committed to a public repo
+  const SEED_ENTRIES = []; // cleared - real sales data must never be committed to a public repo
   const SEED_FLAG_KEY = "printLedger_seeded_v2";
 
   function applySeedIfNeeded(){
@@ -2554,10 +2846,13 @@
   const readoutFlags = document.getElementById("readoutFlags");
   const readoutSub = document.getElementById("readoutSub");
   const readoutStamp = document.getElementById("readoutStamp");
+  const recentMonthTotal = document.getElementById("recentMonthTotal");
+  const recentFilament = document.getElementById("recentFilament");
+  const recentHours = document.getElementById("recentHours");
+  const recentList = document.getElementById("recentList");
   const packagingCard = document.getElementById("packagingCard");
   const freebieCard = document.getElementById("freebieCard");
   const packagingNote = document.getElementById("packagingNote");
-  const dock = document.getElementById("dock");
   const themeCycleBtn = document.getElementById("themeCycleBtn");
   const miniChart = document.getElementById("miniChart");
   const chartTotal = document.getElementById("chartTotal");
@@ -2659,15 +2954,6 @@
     setTimeout(()=> ripple.remove(), 620);
   });
 
-  // Dock tucks away while scrolling down, returns on scroll up
-  let lastScrollY = window.scrollY;
-  window.addEventListener("scroll", ()=>{
-    const y = window.scrollY;
-    if(Math.abs(y - lastScrollY) < 8) return;
-    dock.classList.toggle("tucked", y > lastScrollY && y > 120);
-    lastScrollY = y;
-  }, {passive: true});
-
   // ---------- Formatting ----------
   function inr(n){
     return "₹" + Math.round(n).toLocaleString("en-IN");
@@ -2711,7 +2997,7 @@
     return { filamentCost, powerCost, labourCost, packagingCost, profitCost, discount, coupon, total };
   }
 
-  // Animated number rolling — eases the displayed value toward the real one
+  // Animated number rolling - eases the displayed value toward the real one
   let priceAnimFrame = null;
   let shownPrice = 0;
   function animatePriceTo(target){
@@ -2754,7 +3040,7 @@
     const { total, coupon, discount, filamentCost, powerCost, labourCost, packagingCost } = parts;
 
     animatePriceTo(total);
-    partNameEcho.textContent = productName.value.trim() || "—";
+    partNameEcho.textContent = productName.value.trim() || "No product yet";
     priceValueWrap.classList.toggle("overridden", priceOverride !== null && !freebieOn);
 
     // Status flags
@@ -2786,7 +3072,7 @@
       couponStatus.textContent = "";
       couponStatus.className = "coupon-status";
     }else if(coupon){
-      couponStatus.textContent = `${coupon.code.toUpperCase()} applied — ${coupon.percent}% off (−${inr(discount)})`;
+      couponStatus.textContent = `${coupon.code.toUpperCase()} applied, ${coupon.percent}% off (−${inr(discount)})`;
       couponStatus.className = "coupon-status applied";
     }else{
       couponStatus.textContent = "Coupon not recognised";
@@ -3004,7 +3290,7 @@
       <div class="coupon-row" data-idx="${i}">
         <span><span class="ccode">${escapeHtml(c.code.toUpperCase())}</span><span class="cpct">${c.percent}% off</span></span>
         <button class="coupon-row-del" aria-label="Delete coupon" data-idx="${i}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
         </button>
       </div>`).join("");
 
@@ -3087,6 +3373,41 @@
     return buckets;
   }
 
+  // Laptop side panel: this calendar month, plus the last few prints
+  function renderRecent(){
+    const now = new Date();
+    const thisMonth = log.filter(e=>{
+      const d = new Date(e.date);
+      return !isNaN(d) && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+
+    recentMonthTotal.textContent = inr(thisMonth.reduce((s,e)=> s + effectiveTotal(e), 0));
+
+    const grams = thisMonth.reduce((s,e)=> s + (e.weight||0), 0);
+    recentFilament.textContent = grams >= 1000 ? (grams/1000).toFixed(2) + "kg" : Math.round(grams) + "g";
+    recentHours.textContent = Math.round(thisMonth.reduce((s,e)=> s + (e.time||0), 0)) + "h";
+
+    const latest = log.slice(0, 4);
+    if(latest.length === 0){
+      recentList.innerHTML = `<div class="recent-empty">Nothing logged yet.</div>`;
+      return;
+    }
+
+    recentList.innerHTML = latest.map(e=>{
+      const d = new Date(e.date);
+      const dateStr = isNaN(d) ? "" : d.toLocaleDateString("en-IN", {day:"2-digit", month:"short"});
+      const sub = [e.customer, dateStr].filter(Boolean).join(" · ");
+      return `
+        <div class="recent-item">
+          <span class="recent-item-main">
+            <span class="recent-item-name">${escapeHtml(e.product || "Untitled")}</span>
+            <span class="recent-item-sub">${escapeHtml(sub)}</span>
+          </span>
+          <span class="recent-item-price">${inr(effectiveTotal(e))}</span>
+        </div>`;
+    }).join("");
+  }
+
   function renderChart(){
     const buckets = monthlyRevenue();
     const peak = Math.max(...buckets.map(b=> b.total), 1);
@@ -3146,6 +3467,7 @@
     const stats = computeStats(log); // stats strip always reflects everything, not just filtered view
 
     renderChart();
+    renderRecent();
 
     statCount.textContent = log.length;
     statRevenue.textContent = inr(stats.revenue);
@@ -3186,16 +3508,17 @@
       const isExpanded = e.id === expandedId;
       const billed = (e.billDiscount||0) > 0;
 
+      // Who and when reads as a sentence; everything countable becomes a chip
       const metaParts = [];
       if(e.customer) metaParts.push(e.customer);
       if(dateStr) metaParts.push(dateStr);
-      if(e.weight) metaParts.push(e.weight+"g");
-      if(e.time) metaParts.push(e.time+"h");
-      if(!isFreebie) metaParts.push((rowProfit>=0?"+":"−")+inr(Math.abs(rowProfit))+" profit");
 
       const pills = [
         e.paid ? `<span class="status-pill paid">Paid</span>` : `<span class="status-pill due">Unpaid</span>`,
         e.printDone ? `<span class="status-pill done">Printed</span>` : `<span class="status-pill queued">Queued</span>`,
+        e.weight ? `<span class="status-pill spec">${e.weight}g</span>` : "",
+        e.time ? `<span class="status-pill spec">${e.time}h</span>` : "",
+        isFreebie ? "" : `<span class="status-pill ${rowProfit >= 0 ? "gain" : "due"}">${rowProfit >= 0 ? "+" : "−"}${inr(Math.abs(rowProfit))}</span>`,
         billed ? `<span class="status-pill billed">Billed −${inr(e.billDiscount)}</span>` : ""
       ].join("");
 
@@ -3216,7 +3539,7 @@
               <div class="log-detail-header">
                 <span class="log-detail-label">Print details</span>
                 <button class="log-detail-close" aria-label="Close" data-id="${e.id}">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
               <div class="log-detail-grid">
@@ -3243,24 +3566,24 @@
               <div class="toggle-row" style="margin-top:12px; margin-bottom:0;">
                 <div class="toggle-item">
                   <span class="toggle-label">Paid</span>
-                  <button class="switch on-success toggle-paid" data-id="${e.id}" role="switch" aria-checked="${e.paid ? "true" : "false"}"><span class="switch-knob"></span></button>
+                  <button class="switch on-success toggle-paid" data-id="${e.id}" role="switch" aria-label="Paid" aria-checked="${e.paid ? "true" : "false"}"><span class="switch-knob"></span></button>
                 </div>
                 <div class="toggle-item">
                   <span class="toggle-label">Print done</span>
-                  <button class="switch on-success toggle-done" data-id="${e.id}" role="switch" aria-checked="${e.printDone ? "true" : "false"}"><span class="switch-knob"></span></button>
+                  <button class="switch on-success toggle-done" data-id="${e.id}" role="switch" aria-label="Print done" aria-checked="${e.printDone ? "true" : "false"}"><span class="switch-knob"></span></button>
                 </div>
                 <div class="toggle-item">
                   <span class="toggle-label">Freebie</span>
-                  <button class="switch on-danger toggle-freebie" data-id="${e.id}" role="switch" aria-checked="${isFreebie ? "true" : "false"}"><span class="switch-knob"></span></button>
+                  <button class="switch on-danger toggle-freebie" data-id="${e.id}" role="switch" aria-label="Freebie" aria-checked="${isFreebie ? "true" : "false"}"><span class="switch-knob"></span></button>
                 </div>
               </div>
               <div class="log-detail-actions">
                 <button class="pill-btn log-detail-dup" data-id="${e.id}">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                   Reprice
                 </button>
                 <button class="pill-btn log-detail-del" data-id="${e.id}" style="color: var(--danger);">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path></svg>
                   Delete
                 </button>
               </div>
@@ -3508,8 +3831,11 @@
     handle.addEventListener("pointercancel", endDrag);
   });
 
-  // Topbar button cycles straight through the palettes
+  // Topbar button cycles straight through the palettes.
+  // Stored ids stay put; the labels are the filament colourways they read as.
   const THEME_ORDER = ["obsidian", "aurora", "sunset", "ocean", "paper"];
+  const THEME_LABEL = { obsidian:"Carbon", aurora:"Galaxy", sunset:"Ember", ocean:"Glacier", paper:"Natural" };
+
   themeCycleBtn.addEventListener("click", ()=>{
     const current = document.documentElement.getAttribute("data-theme") || "obsidian";
     const next = THEME_ORDER[(THEME_ORDER.indexOf(current) + 1) % THEME_ORDER.length];
@@ -3518,7 +3844,7 @@
     void themeCycleBtn.offsetWidth;
     themeCycleBtn.classList.add("spun");
     haptic(10);
-    showToast(next.charAt(0).toUpperCase() + next.slice(1));
+    showToast(THEME_LABEL[next] || next);
   });
 
   // ---------- Bill generator ----------
@@ -3730,7 +4056,7 @@
       return `
         <button class="bill-item-row ${isChecked ? "checked" : ""}" data-id="${e.id}">
           <span class="bill-checkbox">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </span>
           <span class="bill-item-main">
             <div class="bill-item-product">${escapeHtml(e.product || "Untitled")}</div>
@@ -3777,7 +4103,7 @@
       billCouponStatus.textContent = "";
       billCouponStatus.className = "coupon-status";
     }else if(coupon){
-      billCouponStatus.textContent = `${coupon.code.toUpperCase()} applied — ${coupon.percent}% off`;
+      billCouponStatus.textContent = `${coupon.code.toUpperCase()} applied, ${coupon.percent}% off`;
       billCouponStatus.className = "coupon-status applied";
     }else{
       billCouponStatus.textContent = "Coupon not recognised";
