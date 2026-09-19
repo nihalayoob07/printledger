@@ -651,6 +651,43 @@ tr.detail td{padding:0;background:var(--bg-2)}
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.01ms !important;transition-duration:.01ms !important}
 }
+
+/* ════════ PHONE ════════
+   The shell was 67-97px wider than a 320px viewport: the header would not
+   shrink, the ledger's product column had a 34ch floor the table could not
+   go under, and the bill composer kept two columns whatever the width. */
+@media (max-width:540px){
+  .head{gap:8px;padding:0 10px}
+  .head-tools{margin-left:4px;gap:3px}
+  .logo{flex:0 1 auto;min-width:0}
+  .logo b{overflow:hidden;text-overflow:ellipsis}
+
+  .pname{max-width:14ch}
+  .pmeta{overflow:hidden;text-overflow:ellipsis;max-width:14ch}
+  table.ltab td{padding:10px 7px}
+  table.ltab thead th{padding:9px 8px}
+
+  .two{grid-template-columns:1fr}
+
+  /* the readout sits over the drawing when the stage is this short */
+  .plate-svg{padding:6px 0 62px}
+}
+@media (max-width:400px){
+  .logo b{display:none}
+  .head{gap:6px;padding:0 8px}
+}
+
+/* Issuing a bill sat seven screens below seventy pickable prints, so on a
+   phone the total and the action pin to the bottom of the column instead. */
+@media (max-width:999px){
+  .bact{
+    position:sticky;bottom:0;z-index:2;
+    margin:6px -14px 0;padding:0 14px 10px;
+    padding-bottom:calc(10px + env(safe-area-inset-bottom));
+    background:var(--panel);border-top:1px solid var(--line);
+  }
+  .bact .bfoot{border-top:0;margin-top:0;padding:9px 0 8px}
+}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
@@ -1495,8 +1532,10 @@ function paintBills(){
             <span class="bmain"><span class="btitle">${esc(e.product||"Untitled")}</span><span class="bsub">${esc(meta)}</span></span>
             <span class="bval">${esc(inr(e.total))}</span>
           </button>`}).join("")}
-      <div class="bfoot"><span>${t.items.length} selected</span><b>${esc(inr(t.grandTotal))}</b></div>
-      <button class="go" id="btnGen" ${t.items.length===0?"disabled":""}>${editing?"Save changes":"Issue bill"}</button>`;
+      <div class="bact">
+        <div class="bfoot"><span>${t.items.length} selected</span><b>${esc(inr(t.grandTotal))}</b></div>
+        <button class="go" id="btnGen" ${t.items.length===0?"disabled":""}>${editing?"Save changes":"Issue bill"}</button>
+      </div>`;
   }
   paintPane();
 }
