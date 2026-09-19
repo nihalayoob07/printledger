@@ -823,9 +823,19 @@ tr.detail td{padding:0;background:var(--bg-2)}
         <span class="led" id="led2" style="position:static"></span>
       </div>
       <p class="lead" id="syncLead"></p>
-      <div class="p-row"><label for="syncIn">Sync code</label><div class="inp"><input type="text" id="syncIn" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="e.g. NIHAL2026…"></div></div>
-      <button class="go" id="btnConnect">Connect</button>
-      <button class="ghost bad" id="btnDisconnect" style="width:100%;margin-top:8px" hidden>Disconnect sync</button>
+      <div id="fbBlock">
+        <div class="p-row"><label for="fbIn">Firebase config</label>
+          <textarea id="fbIn" rows="5" spellcheck="false" autocomplete="off" placeholder='{ "apiKey": "…", "databaseURL": "https://….firebasedatabase.app" }' style="width:100%;box-sizing:border-box;background:var(--bg-2,#0d0f0d);border:1px solid var(--line,#242925);border-radius:10px;color:inherit;font:inherit;font-size:12px;padding:10px 12px;outline:none;resize:vertical"></textarea>
+        </div>
+        <button class="go" id="btnProject">Connect a project</button>
+      </div>
+      <div id="codeBlock" hidden>
+        <div class="p-row"><label for="syncIn">Sync code</label><div class="inp"><input type="text" id="syncIn" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="A long random code…"></div></div>
+        <button class="ghost" id="btnGenCode" style="width:100%;margin-bottom:8px">Generate a code</button>
+        <button class="go" id="btnConnect">Connect</button>
+        <button class="ghost bad" id="btnDisconnect" style="width:100%;margin-top:8px" hidden>Disconnect sync</button>
+        <button class="ghost" id="btnForget" style="width:100%;margin-top:8px">Use a different Firebase project</button>
+      </div>
 
       <button class="dotdot" id="btnStash" aria-label="More options">···</button>
       <div class="stash" id="stash">
@@ -867,6 +877,7 @@ const noMo=matchMedia("(prefers-reduced-motion: reduce)").matches;
 /* ════════ DOMAIN (keys, shapes and maths unchanged) ════════ */
 const K={set:"printLedger_settings_v1",log:"printLedger_log_v1",cou:"printLedger_coupons_v1",
   bill:"printLedger_bills_v1",sync:"printLedger_syncCode_v1",theme:"printLedger_theme_v1",
+  fb:"printLedger_firebase_v1",
   seed:"printLedger_seeded_v2",mig:"printLedger_migration_paidDone_v1",cfix:"printLedger_migration_firstCoupon25_v1"};
 
 const defaults={filamentCostPerKg:1200,printerWatts:220,electricityRate:9.5,labourRate:40,packagingCost:0,profitPercent:35};
@@ -893,17 +904,34 @@ const inr=(n)=>"₹"+Math.round(n).toLocaleString("en-IN");
 const inrP=(n)=>Number(n).toLocaleString("en-IN",{maximumFractionDigits:2});
 
 /* sync */
-const fbConfig={apiKey:"AIzaSyD3YpAiS_yIGi3yWh-6_IDl_2J02oE6lVI",authDomain:"printvault-ccd63.firebaseapp.com",
-databaseURL:"https://printvault-ccd63-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"printvault-ccd63",
-storageBucket:"printvault-ccd63.firebasestorage.app",messagingSenderId:"172189940924",appId:"1:172189940924:web:7d1a66888bfe3505b7a4b9"};
+/* No project is shipped here. Each shop connects its own Firebase, pasted in
+   Settings and kept in localStorage, so nobody syncs into anybody else's
+   database. Sync is simply off until one is supplied. */
+function loadFb(){try{return JSON.parse(localStorage.getItem(K.fb)||"null")}catch(e){return null}}
+function saveFb(c){if(c)localStorage.setItem(K.fb,JSON.stringify(c));else localStorage.removeItem(K.fb)}
+function parseFb(raw){
+  const t=String(raw||""),i=t.indexOf("{"),j=t.lastIndexOf("}");
+  if(i<0||j<=i)return null;
+  const body=t.slice(i,j+1);let o=null;
+  try{o=JSON.parse(body)}
+  catch(e){
+    /* the console hands you a JS object literal, not JSON */
+    try{o=JSON.parse(body.replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g,'$1"$2":').replace(/,(\s*[}\]])/g,"$1").replace(/'/g,'"'))}
+    catch(x){return null}
+  }
+  return o&&typeof o.apiKey==="string"&&typeof o.databaseURL==="string"?o:null;
+}
+let fbConfig=loadFb();
 let syncCode=localStorage.getItem(K.sync)||"",ref=null,fbApp=null,pushT=null,pulling=false;
 const clean=(r)=>(r||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"");
 function led(s){[$("led1"),$("led2")].forEach(d=>{if(!d)return;d.classList.remove("connected","syncing","error");if(s!=="idle")d.classList.add(s)})}
 const fbOk=()=>typeof firebase!=="undefined"&&typeof firebase.initializeApp==="function";
-function fbInit(){if(fbApp)return true;if(!fbOk())return false;try{fbApp=firebase.initializeApp(fbConfig)}catch(e){try{fbApp=firebase.app()}catch(x){return false}}return !!fbApp}
+function fbInit(){if(fbApp)return true;if(!fbOk()||!fbConfig)return false;try{fbApp=firebase.initializeApp(fbConfig)}catch(e){try{fbApp=firebase.app()}catch(x){return false}}return !!fbApp}
 function connect(code){
   const c=clean(code);
+  if(!fbConfig){led("idle");toast("Add your Firebase project first");return}
   if(!c){toast("Enter a sync code first");return}
+  if(c.length<16){led("error");toast("That code is too short. Use at least 16 characters.");return}
   if(!fbInit()){led("error");toast("Sync unavailable offline");return}
   syncCode=c;localStorage.setItem(K.sync,syncCode);
   try{ref=firebase.database().ref("syncedUsers/"+syncCode)}catch(e){console.error(e);ref=null;led("error");toast("Sync unavailable");return}
@@ -931,11 +959,21 @@ function push(){
     .then(()=>led("connected")).catch(e=>{console.error("Sync push error",e);led("error")})},600);
 }
 function syncUI(){
+  $("fbBlock").hidden=!!fbConfig;
+  $("codeBlock").hidden=!fbConfig;
+  if(!fbConfig){
+    $("syncLead").textContent="Optional. Everything works on this device without it. To sync, make a free Firebase project with a Realtime Database and paste its config here, so your data stays in your own database.";
+    return;
+  }
   if(syncCode){$("syncIn").value=syncCode;$("btnConnect").textContent="Reconnect";$("btnDisconnect").hidden=false;
     $("syncLead").textContent="Connected. This device auto-syncs with any other using the same code."}
   else{$("btnConnect").textContent="Connect";$("btnDisconnect").hidden=true;
-    $("syncLead").textContent="Set a code here, then the same code on your other device. Anyone with it can read your data."}
+    $("syncLead").textContent="Generate a code, then put the same code on your other device. The code is the only thing protecting your data, so keep it long and private."}
 }
+
+const CODE_ABC="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function genCode(){const b=new Uint8Array(24);crypto.getRandomValues(b);
+  return Array.from(b,(x)=>CODE_ABC[x%CODE_ABC.length]).join("")}
 
 /* migrations */
 if(!localStorage.getItem(K.seed)){localStorage.setItem(K.log,JSON.stringify([]));localStorage.setItem(K.seed,"1")}
@@ -1667,6 +1705,16 @@ document.addEventListener("click",e=>{
       electricityRate:parseFloat($("rElec").value)||0,labourRate:parseFloat($("rLab").value)||0,
       packagingCost:parseFloat($("rPack").value)||0,profitPercent:parseFloat($("rProf").value)||0};
     saveSettings(settings);buzz(12);paint();toast("Rates saved");
+  }
+  if(e.target.closest("#btnProject")){
+    const c=parseFb($("fbIn").value);
+    if(!c){toast("That does not look like a Firebase config");return}
+    fbConfig=c;saveFb(c);fbApp=null;ref=null;$("fbIn").value="";syncUI();toast("Project saved. Now set a sync code.");
+  }
+  if(e.target.closest("#btnGenCode")){$("syncIn").value=genCode();toast("Generated. Connect to use it.")}
+  if(e.target.closest("#btnForget")){
+    if(ref)ref.off();ref=null;fbApp=null;fbConfig=null;saveFb(null);
+    syncCode="";localStorage.removeItem(K.sync);led("idle");syncUI();toast("Firebase project removed");
   }
   if(e.target.closest("#btnConnect"))connect($("syncIn").value);
   if(e.target.closest("#btnDisconnect"))disconnect();

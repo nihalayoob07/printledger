@@ -26,7 +26,7 @@ Built to run the pricing, sales log, and billing for a 3D printing side business
 | 🧾 **Bills** | Group ledger entries into a bill, apply a coupon, export as a PNG image |
 | 🎟️ **Coupons** | Save reusable % discount codes, apply at pricing or billing |
 | 📤 **CSV export** | Dump the whole ledger to CSV whenever you want |
-| 🔄 **Sync (optional)** | Pair two devices with a shared code, data syncs live via Firebase |
+| 🔄 **Sync (optional)** | Connect your own Firebase project, pair devices with a shared code |
 | 🎨 **5 themes** | Obsidian, Aurora, Sunset, Ocean, and Paper (light mode) |
 | 📱 **Mobile-first** | Built for one-handed use on the shop floor, scales up to desktop |
 
@@ -63,16 +63,38 @@ Everything lives in your browser's `localStorage`. Nothing leaves your device un
 
 ## 🔄 Cross-device sync (optional)
 
-Sync uses Firebase Realtime Database so your data can follow you between devices.
-
-> [!IMPORTANT]
-> The Firebase project wired into this file is **mine**. If you fork this and turn sync on without swapping the config, you'll be syncing into *my* database. Set up your own first:
+Sync runs on **your own** Firebase project. Nothing is bundled in this file, so your data never touches anybody else's database, including mine. Skip the whole section and the calculator, ledger, and bills work exactly the same.
 
 1. Create a free project at [firebase.google.com](https://firebase.google.com).
-2. Enable **Realtime Database**.
-3. Replace the `fbConfig` object near the top of the `<script>` block in `index.html` with your own project's config.
+2. Build → **Realtime Database** → Create Database.
+3. Project settings → Your apps → **Web** → copy the config snippet.
+4. In the app: **Settings → Sync** → paste the snippet → **Connect a project**.
+5. **Generate a code**, then **Connect**. Put the same code into the app on your other device.
 
-Skip this and sync just fails quietly (offline) — the calculator, ledger, and bills all work fine without it.
+The config is saved in `localStorage`, not in the file, so re-downloading `index.html` never clobbers it.
+
+### ⚠️ Set the database rules
+
+The sync code is the only credential. Leave the database in test mode and anyone who finds your project URL can read and write everything in it.
+
+Realtime Database → **Rules**:
+
+```json
+{
+  "rules": {
+    "syncedUsers": {
+      "$code": {
+        ".read": "$code.length >= 20",
+        ".write": "$code.length >= 20 && newData.hasChild('settings')"
+      }
+    }
+  }
+}
+```
+
+Your data lives under a long random code that acts as the key, and short or guessable codes are refused outright. Use the generated one — the app won't accept anything under 16 characters. Treat it like a password, because that's what it is.
+
+Being straight about the limits: anyone holding the code has full access, there's no per-user login, and there's no audit trail. That's a fair trade for one person syncing two devices. If you have staff, or customer data you're legally responsible for, put Firebase Authentication in front of it.
 
 ## 🎨 Customizing
 
@@ -84,6 +106,7 @@ It's one file — everything's in `index.html`. Good starting points:
 | Default rates | the `defaults` object in the script |
 | Default coupons | the `defCoupons` array |
 | Currency (currently ₹ / INR) | search for `inr(` and `en-IN` |
+| Sync target | nothing to edit — paste your Firebase config in **Settings** |
 
 ## 📄 License
 
